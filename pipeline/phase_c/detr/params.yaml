@@ -32,4 +32,4 @@ training:
 
 mlflow:
   experiment_name: "detr-round1"
-  tracking_uri: "https://dagshub.com/your-username/robops_perception.mlflow"
+  tracking_uri: "https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow"
