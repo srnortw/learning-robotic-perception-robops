@@ -1,0 +1,5 @@
+[core]
+    remote = s3remote
+['remote "s3remote"']
+    url = s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/dvc-cache
+    region = eu-central-1

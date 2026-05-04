@@ -1,0 +1,15 @@
+architecture: detr
+annotation_format: coco_json
+dataset_version: v1
+
+# Keep this schema consistent across all architecture rounds (DETR → RT-DETR → Mask2Former → SAM2)
+# so model performance is comparable on the same classes.
+classes:
+  - id: 0
+    name: person
+  - id: 1
+    name: chair
+  - id: 2
+    name: table
+  - id: 3
+    name: door
