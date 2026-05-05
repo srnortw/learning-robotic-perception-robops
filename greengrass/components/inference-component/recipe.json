@@ -35,7 +35,7 @@
   },
   "ComponentConfiguration": {
     "DefaultConfiguration": {
-      "robotId": "pi3b-001",
+      "robotId": "robops-pi3b-001",
       "shadowMode": false,
       "confidenceThreshold": 0.5
     }

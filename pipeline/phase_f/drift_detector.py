@@ -164,11 +164,18 @@ def main():
     latency_ratio    = (current_lat_p95 / baseline_lat_p95) if baseline_lat_p95 > 0 else 1.0
 
     # ── 3. Evidently report
-    baseline_df = pd.DataFrame([{
-        "mean_confidence": baseline_mean_conf,
-        "inference_latency_ms": baseline_lat_p95,
-    }] * max(10, len(current_df)))
-    evidently_result = run_evidently_drift(baseline_df, current_df)
+    # Evidently needs a real sample distribution for meaningful results.
+    # A stored scalar baseline (single mean + p95) cannot produce valid
+    # statistical tests — skip Evidently and rely on the custom PSI/threshold
+    # checks above. Evidently becomes useful once we store full sample vectors.
+    baseline_samples = baseline.get("samples")
+    if baseline_samples and len(baseline_samples) >= 30:
+        baseline_df = pd.DataFrame(baseline_samples)
+        evidently_result = run_evidently_drift(baseline_df, current_df)
+    else:
+        print("NOTE: Evidently skipped — baseline has no sample distribution (scalar only). "
+              "Using custom PSI checks instead.")
+        evidently_result = {"dataset_drift": False, "evidently_available": False}
 
     # ── 4. Evaluate thresholds
     triggers = []

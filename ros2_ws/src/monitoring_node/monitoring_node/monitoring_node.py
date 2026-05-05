@@ -78,10 +78,11 @@ class MonitoringNode(Node):
         except json.JSONDecodeError:
             return
 
-        doc["robot_id"]     = ROBOT_ID
-        doc["model_version"]= MODEL_VER
-        doc["cpu_percent"]  = psutil.cpu_percent(interval=None)
-        doc["memory_mb"]    = psutil.virtual_memory().used // (1024 * 1024)
+        doc["robot_id"]        = ROBOT_ID
+        doc["model_version"]   = MODEL_VER
+        doc["source"]          = "production"
+        doc["cpu_percent"]     = psutil.cpu_percent(interval=None)
+        doc["memory_mb"]       = psutil.virtual_memory().used // (1024 * 1024)
         doc["ros_nodes_alive"] = self._live_nodes()
 
         # Remove large frame payload before storing (s3_uploader handles that)

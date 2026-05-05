@@ -519,7 +519,7 @@ jobs:
             --host ${{ secrets.PI_HOST }} \
             --user ${{ env.PI_USER }} \
             --key ~/.ssh/robops_pi \
-            --timeout-minutes 10
+            --timeout-minutes 25
 
       - name: Send Discord — canary deployed
         if: ${{ env.DISCORD_WEBHOOK_URL != '' }}
@@ -572,7 +572,7 @@ jobs:
           VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
           echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Run canary monitor (4h)
+      - name: Run canary monitor (4h) + auto-promote to fleet on pass
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

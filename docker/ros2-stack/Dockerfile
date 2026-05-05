@@ -30,10 +30,7 @@ ENV CAMERA_DEVICE=0
 ENV CAMERA_FPS=5
 ENV DATASET_VERSION=v1
 
-# Launch camera_node and monitoring_node together
-ENTRYPOINT ["/bin/bash", "-c", \
-    ". /opt/ros/jazzy/setup.sh && \
-     . /ros2_ws/install/setup.sh && \
-     ros2 run camera_node camera_node \
-       --ros-args -p device_index:=${CAMERA_DEVICE} -p fps:=${CAMERA_FPS} & \
-     ros2 run monitoring_node monitoring_node"]
+COPY docker/ros2-stack/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

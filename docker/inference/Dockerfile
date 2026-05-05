@@ -22,8 +22,8 @@ WORKDIR /ros2_ws
 RUN . /opt/ros/jazzy/setup.sh && \
     colcon build --packages-select detr_node --cmake-args -DCMAKE_BUILD_TYPE=Release
 
-# Model path injected by Greengrass at runtime via ENV MODEL_PATH
-ENV MODEL_PATH=/home/serkanrob/greengrass/v2/packages/artifacts/com.robops.inference/current/model_int8.onnx
+# Model path injected by Greengrass at runtime via -e MODEL_PATH={artifacts:path}/model_int8.onnx
+ENV MODEL_PATH=/greengrass/v2/packages/artifacts/com.robops.inference/current/model_int8.onnx
 ENV SHADOW_MODE=false
 ENV CONFIDENCE_THRESHOLD=0.5
 ENV ROBOT_ID=pi3b-001

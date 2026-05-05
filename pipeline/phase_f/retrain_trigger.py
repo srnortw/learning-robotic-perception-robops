@@ -19,6 +19,7 @@ import sys
 from datetime import datetime, timezone
 
 import requests
+import yaml
 from pymongo import MongoClient
 
 MONGO_URI   = os.environ.get("MONGO_URI", "")
@@ -26,6 +27,15 @@ DB_NAME     = "robops"
 GH_TOKEN    = os.environ.get("GITHUB_TOKEN", "")
 GH_REPO     = "srnortw/learning-robotic-perception-robops"
 DISCORD_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+PARAMS_PATH = "pipeline/phase_c/detr/params.yaml"
+
+
+def current_dataset_version() -> str:
+    try:
+        with open(PARAMS_PATH) as f:
+            return yaml.safe_load(f)["dataset"]["dataset_version"]
+    except Exception:
+        return "v1"
 
 
 def connect_mongo():
@@ -36,8 +46,13 @@ def connect_mongo():
 def flag_drift_frames(db, report: dict):
     """Mark production frames from the drift window as retrain_priority."""
     try:
+        from datetime import datetime, timedelta, timezone
+        report_ts  = datetime.fromisoformat(report["timestamp"])
+        window_hrs = report.get("window_hours", 24)
+        window_start = (report_ts - timedelta(hours=window_hrs)).isoformat()
         result = db.production_metrics.update_many(
-            {"source": "production", "timestamp": {"$gte": report.get("window_start", "")}},
+            {"source": "production",
+             "timestamp": {"$gte": window_start, "$lte": report["timestamp"]}},
             {"$set": {"retrain_priority": True}},
         )
         print(f"Flagged {result.modified_count} frames as retrain_priority in MongoDB")
@@ -82,8 +97,8 @@ def dispatch_github_actions(report: dict) -> str | None:
     payload = {
         "ref": "main",
         "inputs": {
-            "model_run_id": "retrain",
-            "dataset_version": "v1",
+            "model_run_id": "",
+            "dataset_version": current_dataset_version(),
             "retrain": "true",
         }
     }
@@ -103,8 +118,6 @@ def dispatch_github_actions(report: dict) -> str | None:
     else:
         print(f"WARNING: GitHub dispatch failed {resp.status_code}: {resp.text}")
         return None
-
-    _ = primary_trigger, drift_val  # used in future enrichment
 
 
 def send_discord_alert(report: dict, run_url: str | None):
