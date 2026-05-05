@@ -40,7 +40,10 @@ env:
   ECR_REPO_ROS2STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack
   S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
   ACCOUNT_ID: "688567275774"
-  CANARY_GROUP_ARN: arn:aws:iot:eu-central-1:688567275774:thinggroup/group-canary
+  GREENGRASS_REGION: us-east-1
+  CANARY_GROUP_ARN: arn:aws:iot:us-east-1:688567275774:thinggroup/group-canary
+  PI_USER: serkanrob
+  GG_THING_NAME: GreengrassQuickStartCore-19d92a0493c
 
 jobs:
   # ── Job 1: ONNX Export + INT8 Quantization ─────────────────────────────
@@ -476,11 +479,11 @@ jobs:
 
           aws greengrassv2 create-component-version \
             --inline-recipe fileb://greengrass/components/inference-component/recipe.json \
-            --region ${{ env.AWS_REGION }} || echo "Version may already exist"
+            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist"
 
           aws greengrassv2 create-component-version \
             --inline-recipe fileb://greengrass/components/ros2-stack-component/recipe.json \
-            --region ${{ env.AWS_REGION }} || echo "Version may already exist"
+            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist"
 
       - name: Deploy to canary group
         run: |
@@ -502,8 +505,8 @@ jobs:
                 "timeoutInSeconds": 60
               }
             }' \
-            --region ${{ env.AWS_REGION }}
-          echo "Canary deployment triggered → group-canary (pi3b-001)"
+            --region ${{ env.GREENGRASS_REGION }}
+          echo "Canary deployment triggered → group-canary (${{ env.GG_THING_NAME }})"
 
       - name: Post-deploy health check
         env:
@@ -514,7 +517,7 @@ jobs:
           chmod 600 ~/.ssh/robops_pi
           python pipeline/phase_e/health_check.py \
             --host ${{ secrets.PI_HOST }} \
-            --user pi \
+            --user ${{ env.PI_USER }} \
             --key ~/.ssh/robops_pi \
             --timeout-minutes 10
 

@@ -1,0 +1,8 @@
+detr_node:
+  ros__parameters:
+    model_path: "/models/detr/model.onnx"
+    shadow_mode: true
+    confidence_threshold: 0.6
+    upload_every_nth_frame: 30
+    robot_id: "pi3b-001"
+    architecture: "detr"

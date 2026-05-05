@@ -1,0 +1,4 @@
+# DVC-managed directories — tracked via .dvc files, not git
+raw/
+holdout/
+cvat_queue.json

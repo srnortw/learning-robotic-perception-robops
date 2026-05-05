@@ -22,7 +22,7 @@ import yaml
 
 PARAMS_PATH     = "pipeline/phase_c/detr/params.yaml"
 ACCOUNT_ID      = "688567275774"
-AWS_REGION      = "eu-central-1"
+AWS_REGION      = "us-east-1"   # Greengrass registered in us-east-1
 CANARY_GROUP    = "group-canary"
 FLEET_GROUP     = "group-fleet"
 
