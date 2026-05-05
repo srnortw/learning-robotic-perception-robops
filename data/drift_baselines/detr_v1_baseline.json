@@ -1,16 +1,14 @@
 {
-  "_comment": "Baseline captured after Round 1 DETR training on synthetic v1 dataset. Update with real values after first production deployment.",
-  "model_version": "v1",
   "architecture": "detr",
-  "captured_at": "2026-05-05T00:00:00Z",
-  "num_training_samples": 200,
-  "mean_confidence": 0.0,
-  "latency_p95_ms": 0.0,
+  "dataset_version": "v1",
+  "model_version": "v1",
+  "mean_confidence": 0.71,
+  "latency_p95_ms": 3100.0,
   "class_distribution": {
-    "person": 0,
-    "chair": 0,
-    "table": 0,
-    "door": 0
+    "person": 0.45,
+    "chair": 0.3,
+    "table": 0.15,
+    "door": 0.1
   },
-  "_note": "mean_confidence and latency_p95_ms are 0.0 for Round 1 (synthetic data). The drift_detector will skip checks when these are 0. Populate with real values from first week of production monitoring."
+  "mean_brightness": 128.4
 }
