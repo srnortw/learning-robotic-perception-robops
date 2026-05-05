@@ -23,7 +23,9 @@ RUN pip install --no-cache-dir -r requirements-training.txt
 
 # Copy only the pipeline scripts needed for export and training
 COPY pipeline/phase_c/ ./pipeline/phase_c/
-COPY pipeline/phase_b/drift_baseline_detr.json ./pipeline/phase_b/drift_baseline_detr.json 2>/dev/null || true
+RUN mkdir -p ./pipeline/phase_b
+# drift baseline is optional at build time; generate it at runtime if absent
+COPY pipeline/phase_b/ ./pipeline/phase_b/
 
 # Default command runs ONNX export
 # Override at runtime: docker run ... python pipeline/phase_c/detr/train.py
