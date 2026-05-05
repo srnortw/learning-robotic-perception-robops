@@ -22,3 +22,5 @@ ros2_ws/log/
 # Model weights (stored in S3)
 *.onnx
 *.pt
+.vscode/
+.cursor/
