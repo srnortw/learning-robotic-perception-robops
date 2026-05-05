@@ -528,10 +528,56 @@ jobs:
         run: |
           VERSION=${{ steps.params.outputs.dataset_version }}
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          MESSAGE="**[RoboOps Phase E]** Canary deployed DETR \`${VERSION}\` → \`pi3b-001\` ✓\n"
+          MESSAGE="**[RoboOps Phase E]** Canary deployed DETR \`${VERSION}\` → \`${{ env.GG_THING_NAME }}\` ✓\n"
           MESSAGE+="Inference image: \`${{ env.ECR_REPO_INFERENCE }}:${VERSION}\`\n"
           MESSAGE+="Phase F monitoring starting — fleet promotion after canary window.\n"
           MESSAGE+="Actions: ${RUN_URL}"
           curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{\"content\": \"$MESSAGE\"}"
+
+  # ── Job 9: Phase F — Canary Monitor + Fleet Promotion ────────────────────
+  canary-monitor:
+    name: Phase F — Canary Monitor (4h) + Fleet Promotion
+    runs-on: self-hosted   # long-running job on workstation runner
+    needs: deploy-canary
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
+    timeout-minutes: 300   # 5h max (4h monitor + buffer)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pymongo boto3 pyyaml requests
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.GREENGRASS_REGION }}
+
+      - name: Extract dataset version
+        id: params
+        run: |
+          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
+          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Run canary monitor (4h)
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python pipeline/phase_f/canary_monitor.py \
+            --dataset-version ${{ steps.params.outputs.dataset_version }} \
+            --hours 4 \
+            --poll-minutes 15

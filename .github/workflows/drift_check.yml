@@ -1,0 +1,76 @@
+name: Phase F — Drift Detection (Scheduled)
+
+# Runs every 6 hours on the self-hosted workstation runner.
+# Manual dispatch available for testing.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Look-back window in hours'
+        required: false
+        default: '24'
+        type: string
+      baseline:
+        description: 'Baseline JSON path'
+        required: false
+        default: 'data/drift_baselines/detr_v1_baseline.json'
+        type: string
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  drift-check:
+    name: Drift Detection — DETR production metrics
+    runs-on: self-hosted   # workstation amd64 runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install pymongo pandas evidently pyyaml requests boto3
+
+      - name: Run drift detector
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python pipeline/phase_f/drift_detector.py \
+            --hours ${{ inputs.hours || '24' }} \
+            --baseline ${{ inputs.baseline || 'data/drift_baselines/detr_v1_baseline.json' }} \
+            --output pipeline/phase_f/drift_report.json
+
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report-${{ github.run_id }}
+          path: pipeline/phase_f/drift_report.json
+          retention-days: 30
+
+      - name: Send healthy notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then exit 0; fi
+          REPORT=$(cat pipeline/phase_f/drift_report.json 2>/dev/null || echo '{}')
+          DRIFT=$(echo "$REPORT" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('drift_detected', False))")
+          if [ "$DRIFT" = "False" ]; then
+            RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            curl -s -X POST "$DISCORD_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "{\"content\": \"**[Phase F]** Drift check passed — no drift detected ✓ | [Run](${RUN_URL})\"}"
+          fi
