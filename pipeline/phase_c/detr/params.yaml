@@ -1,35 +1,37 @@
 preprocessing:
-  image_size: [800, 800]
-  normalize_mean: [0.485, 0.456, 0.406]
-  normalize_std: [0.229, 0.224, 0.225]
+  image_size:
+  - 800
+  - 800
+  normalize_mean:
+  - 0.485
+  - 0.456
+  - 0.406
+  normalize_std:
+  - 0.229
+  - 0.224
+  - 0.225
   augmentation:
     horizontal_flip: true
     color_jitter: 0.4
-    # DETR is sensitive to aggressive crop — keep false initially
     random_crop: false
-
 dataset:
   train_split: 0.85
   val_split: 0.15
-  # Bump this path after every convert_to_mds.py run — triggers GitHub Actions CI
-  mds_path: "s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/mds/detr/v1/"
-  holdout_path: "s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/data/detr/holdout/"
-  dataset_version: "v1"
+  mds_path: s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/mds/detr/v1/
+  holdout_path: s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/data/detr/holdout/
+  dataset_version: v1
   num_classes: 4
-
 model:
-  architecture: "conditional-detr-resnet-50"
-  hf_model_id: "microsoft/conditional-detr-resnet-50"
+  architecture: conditional-detr-resnet-50
+  hf_model_id: microsoft/conditional-detr-resnet-50
   num_queries: 300
-
 training:
   epochs: 50
   batch_size: 4
-  learning_rate: 1.0e-4
-  weight_decay: 1.0e-4
+  learning_rate: 0.0001
+  weight_decay: 0.0001
   lr_drop_epoch: 40
   gradient_clip: 0.1
-
 mlflow:
-  experiment_name: "detr-round1"
-  tracking_uri: "https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow"
+  experiment_name: detr-round1
+  tracking_uri: https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow
