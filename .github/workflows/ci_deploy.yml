@@ -40,10 +40,10 @@ env:
   ECR_REPO_ROS2STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack
   S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
   ACCOUNT_ID: "688567275774"
-  GREENGRASS_REGION: us-east-1
-  CANARY_GROUP_ARN: arn:aws:iot:us-east-1:688567275774:thinggroup/group-canary
+  GREENGRASS_REGION: eu-central-1
+  CANARY_GROUP_ARN: arn:aws:iot:eu-central-1:688567275774:thinggroup/group-canary
   PI_USER: serkanrob
-  GG_THING_NAME: GreengrassQuickStartCore-19d92a0493c
+  GG_THING_NAME: robops-pi3b-001
 
 jobs:
   # ── Job 1: ONNX Export + INT8 Quantization ─────────────────────────────
