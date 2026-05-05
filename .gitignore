@@ -19,9 +19,6 @@ ros2_ws/log/
 .env
 *.env
 
-# Jupyter notebooks — distributed via GitHub Releases, not tracked in repo
-*.ipynb
-
 # Model weights (stored in S3)
 *.onnx
 *.pt
