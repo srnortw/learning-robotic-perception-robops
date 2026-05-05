@@ -50,22 +50,21 @@ def build_per_class_table(per_class: dict) -> str:
     return "\n".join(lines)
 
 
-def build_champion_section(champion: dict | None, delta: float) -> str:
+def build_champion_section(champion: dict | None, delta: float, challenger: dict) -> str:
     if not champion:
         return (
             "This is Round 1 — no prior champion exists. "
             "Model is the first to be considered for Production."
         )
-    regressions = [
-        cls for cls, ap in champion.get("per_class_ap50", {}).items()
-        if ap > 0
-    ]
+    challenger_map50   = challenger.get("map50", 0.0)
+    challenger_map5095 = challenger.get("map50_95", 0.0)
+    challenger_lat     = challenger.get("latency_p95_ms", 0.0)
     return "\n".join([
         f"| Metric | Champion (v{champion['version']}) | Challenger | Delta |",
         "|---|---|---|---|",
-        f"| mAP@50 | `{champion['map50']:.4f}` | `{champion['map50']+ delta:.4f}` | `{delta:+.4f}` |",
-        f"| mAP@50:95 | `{champion['map50_95']:.4f}` | — | — |",
-        f"| Latency p95 | `{champion['latency_p95_ms']:.0f} ms` | — | — |",
+        f"| mAP@50 | `{champion['map50']:.4f}` | `{challenger_map50:.4f}` | `{delta:+.4f}` |",
+        f"| mAP@50:95 | `{champion['map50_95']:.4f}` | `{challenger_map5095:.4f}` | — |",
+        f"| Latency p95 | `{champion['latency_p95_ms']:.0f} ms` | `{challenger_lat:.0f} ms` | — |",
     ])
 
 
@@ -85,7 +84,15 @@ def fill_template(template: str, results: dict, params: dict,
 
     per_class = challenger.get("per_class_ap50", {})
     per_class_table = build_per_class_table(per_class) if per_class else "N/A"
-    champion_section = build_champion_section(champion, delta)
+    champion_section = build_champion_section(champion, delta, challenger)
+
+    holdout_n = results.get("holdout_size", None)
+    if holdout_n:
+        holdout_str = str(holdout_n)
+    elif not champion:
+        holdout_str = "synthetic (20)"
+    else:
+        holdout_str = "—"
 
     registry_info = f"`{results.get('model_name', 'detr-conditional-resnet50')}` v{results.get('model_version', '?')}"
     pr_link = f"[PR]({pr_url})" if pr_url else "—"
@@ -100,7 +107,7 @@ def fill_template(template: str, results: dict, params: dict,
         map50                = f"`{challenger['map50']:.4f}`",
         map50_95             = f"`{challenger['map50_95']:.4f}`",
         latency_p95_ms       = f"`{challenger['latency_p95_ms']:.0f}`",
-        holdout_size         = "synthetic (20)" if not champion else "—",
+        holdout_size         = holdout_str,
         per_class_table      = per_class_table,
         champion_section     = champion_section,
         reviewer             = reviewer,

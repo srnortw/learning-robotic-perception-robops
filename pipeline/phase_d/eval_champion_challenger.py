@@ -304,12 +304,17 @@ def get_champion_metrics(client) -> dict | None:
             return None
         run = client.get_run(champs[0].run_id)
         m = run.data.metrics
+        per_class_ap50 = {
+            cls: m.get(f"eval_ap50_{cls}", 0.0)
+            for cls in CLASSES.values()
+        }
         return {
             "version": champs[0].version,
             "run_id":  champs[0].run_id,
             "map50":   m.get("map50", 0.0),
             "map50_95": m.get("map50_95", 0.0),
             "latency_p95_ms": m.get("latency_p95_ms", 0.0),
+            "per_class_ap50": per_class_ap50,
         }
     except Exception:
         return None
@@ -362,9 +367,10 @@ def main():
         champion = get_champion_metrics(client)
         if champion:
             delta_map50 = challenger_metrics["map50"] - champion["map50"]
+            champ_per_class = champion.get("per_class_ap50", {})
             regressions = [
                 cls for cls, ap in challenger_metrics.get("per_class_ap50", {}).items()
-                if cls in CRITICAL_CLASSES and ap < champion.get("map50", 0.0)
+                if cls in CRITICAL_CLASSES and ap < champ_per_class.get(cls, 0.0)
             ]
             print(f"\n── vs Champion (v{champion['version']}) ──────────────────")
             print(f"  Champion mAP@50: {champion['map50']:.4f}")
@@ -408,6 +414,7 @@ def main():
             "critical_regressions": regressions,
             "auto_approved": approved,
             "model_name": MODEL_NAME,
+            "holdout_size": len(images),
         }
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
         with open(args.output, "w") as f:
