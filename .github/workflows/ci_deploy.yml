@@ -183,10 +183,6 @@ jobs:
       - name: Open GitHub approval PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -196,59 +192,7 @@ jobs:
           git add pipeline/phase_d/eval_results.json
           git diff --cached --quiet || git commit -m "chore: add eval_results.json for DETR ${VERSION}"
           git push -u origin $BRANCH
-
-          python - <<'PYEOF'
-          import json, subprocess, os
-          with open("pipeline/phase_d/eval_results.json") as f:
-              results = json.load(f)
-          dv      = results["dataset_version"]
-          delta   = results["delta_map50"]
-          map50   = results["challenger"]["map50"]
-          regs    = results["critical_regressions"]
-          per_cls = "\n".join(
-              f"| {cls} | `{ap:.4f}` |"
-              for cls, ap in results["challenger"].get("per_class_ap50", {}).items()
-          )
-          champ   = results.get("champion")
-          champ_line = (
-              f"Champion (v{champ['version']}): mAP@50 = `{champ['map50']:.4f}`"
-              if champ else "No champion — Round 1 (first ever model)"
-          )
-          reg_line = f"⚠️ Critical regressions: {', '.join(regs)}" if regs else "✅ No critical class regressions"
-          run_id  = results["run_id"]
-          title   = f"Deploy DETR {dv} — mAP@50 {map50:.3f} (delta {delta:+.3f})"
-          body    = f"""## DETR Model Audit — {dv}
-
-| Metric | Value |
-|---|---|
-| Challenger mAP@50 | `{map50:.4f}` |
-| Challenger mAP@50:95 | `{results['challenger']['map50_95']:.4f}` |
-| Latency p95 | `{results['challenger']['latency_p95_ms']:.0f} ms` |
-| Delta mAP@50 | `{delta:+.4f}` |
-
-{champ_line}
-
-### Per-class AP@50
-| Class | AP |
-|---|---|
-{per_cls}
-
-{reg_line}
-
-### MLflow Run
-[View on DagsHub](https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow/#/experiments/0/runs/{run_id})
-
-### Action Required
-1. Run `python pipeline/phase_d/fiftyone_audit.py` locally for visual inspection
-2. **Merge this PR** → triggers Phase E deployment (model → Production)
-3. **Close PR** → model stays in Staging, champion unchanged
-"""
-          subprocess.run(
-              ["gh", "pr", "create", "--title", title, "--body", body,
-               "--base", "main"],
-              check=True,
-          )
-          PYEOF
+          python pipeline/phase_d/open_pr.py --results pipeline/phase_d/eval_results.json
 
       - name: Send Discord audit notification
         if: ${{ env.DISCORD_WEBHOOK_URL != '' }}
