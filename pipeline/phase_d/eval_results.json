@@ -1,0 +1,21 @@
+{
+  "run_id": "626d65c14f8d4b9b8d40f5a43010edc1",
+  "model_version": "1",
+  "dataset_version": "v1",
+  "challenger": {
+    "map50_95": 0.0,
+    "map50": 0.0,
+    "per_class_ap50": {
+      "person": 0.0,
+      "chair": 0.0,
+      "table": 0.0,
+      "door": 0.0
+    },
+    "latency_p95_ms": 2109.8889889999696
+  },
+  "champion": null,
+  "delta_map50": 0.0,
+  "critical_regressions": [],
+  "auto_approved": true,
+  "model_name": "detr-conditional-resnet50"
+}
