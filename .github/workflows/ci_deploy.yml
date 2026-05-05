@@ -51,7 +51,7 @@ jobs:
 
       - name: Install export dependencies
         run: |
-          pip install torch torchvision transformers \
+          pip install torch torchvision transformers timm \
                       optimum[onnxruntime] onnxruntime \
                       mlflow dagshub boto3 \
                       pyyaml numpy
