@@ -232,9 +232,9 @@ def main():
         write_drift_event(db, event)
 
         print(f"\nDrift detected — calling retrain_trigger.py")
-        import subprocess
+        import subprocess, sys
         result = subprocess.run(
-            ["python", "pipeline/phase_f/retrain_trigger.py",
+            [sys.executable, "pipeline/phase_f/retrain_trigger.py",
              "--report", args.output],
             capture_output=True, text=True,
         )
