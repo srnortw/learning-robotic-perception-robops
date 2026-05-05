@@ -48,18 +48,76 @@ class _DetrExportWrapper(torch.nn.Module):
         return out.logits, out.pred_boxes
 
 
+def _remap_state_dict(state_dict: dict) -> dict:
+    """
+    Remap checkpoint keys saved with older transformers to the current API.
+    Covers ConditionalDETR backbone/encoder/decoder renames across versions.
+    """
+    replacements = [
+        # backbone path changed: conv_encoder.model → model
+        ("model.backbone.conv_encoder.model.", "model.backbone.model."),
+        # encoder/decoder FFN: fc1/fc2 → mlp.fc1/mlp.fc2
+        (".self_attn.out_proj.", ".self_attn.o_proj."),
+        (".encoder_attn.out_proj.", ".encoder_attn.o_proj."),
+        # decoder SA projection renames
+        (".sa_qcontent_proj.", ".self_attn.q_content_proj."),
+        (".sa_qpos_proj.", ".self_attn.q_pos_proj."),
+        (".sa_kcontent_proj.", ".self_attn.k_content_proj."),
+        (".sa_kpos_proj.", ".self_attn.k_pos_proj."),
+        (".sa_v_proj.", ".self_attn.v_proj."),
+        # decoder CA projection renames
+        (".ca_qcontent_proj.", ".encoder_attn.q_content_proj."),
+        (".ca_qpos_proj.", ".encoder_attn.q_pos_proj."),
+        (".ca_kcontent_proj.", ".encoder_attn.k_content_proj."),
+        (".ca_kpos_proj.", ".encoder_attn.k_pos_proj."),
+        (".ca_v_proj.", ".encoder_attn.v_proj."),
+        (".ca_qpos_sine_proj.", ".encoder_attn.q_pos_sine_proj."),
+    ]
+    remapped = {}
+    for k, v in state_dict.items():
+        new_k = k
+        for old, new in replacements:
+            new_k = new_k.replace(old, new)
+        remapped[new_k] = v
+
+    # FFN fc1/fc2 rename must only apply inside encoder/decoder layer paths
+    final = {}
+    for k, v in remapped.items():
+        new_k = k
+        if "encoder.layers." in k or "decoder.layers." in k:
+            # Direct .fc1. / .fc2. at layer level (not inside mlp already)
+            import re
+            new_k = re.sub(r"(encoder\.layers\.\d+)\.fc(\d)\.", r"\1.mlp.fc\2.", new_k)
+            new_k = re.sub(r"(decoder\.layers\.\d+)\.fc(\d)\.", r"\1.mlp.fc\2.", new_k)
+        final[new_k] = v
+
+    return final
+
+
+def _infer_num_classes(state_dict: dict) -> int:
+    """Read num_classes from the classifier bias shape so we match exactly."""
+    for k, v in state_dict.items():
+        if k.endswith("class_labels_classifier.bias"):
+            return int(v.shape[0])
+    return 91
+
+
 def export_to_onnx(weights_path: str, onnx_dir: str, num_classes: int):
     """Export fine-tuned Conditional DETR to ONNX via torch.onnx.export."""
     print(f"Exporting to ONNX → {onnx_dir}")
     os.makedirs(onnx_dir, exist_ok=True)
 
+    state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
+    state_dict = _remap_state_dict(state_dict)
+    ckpt_classes = _infer_num_classes(state_dict)
+    print(f"Checkpoint num_classes: {ckpt_classes} (params.yaml says {num_classes})")
+
     from transformers import AutoModelForObjectDetection
     model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50",
-        num_labels=num_classes,
+        num_labels=ckpt_classes,
         ignore_mismatched_sizes=True,
     )
-    state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
     model.load_state_dict(state_dict)
     model.eval()
 
