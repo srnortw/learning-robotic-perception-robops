@@ -12,10 +12,7 @@ Or in GitHub Actions (triggered automatically by ci_deploy.yml).
 
 import argparse
 import os
-import subprocess
-import sys
 import tempfile
-from pathlib import Path
 
 import boto3
 import mlflow
@@ -40,46 +37,38 @@ def download_weights_from_s3(dataset_version: str, local_path: str):
     print("Download complete.")
 
 
-def export_to_onnx(weights_path: str, onnx_dir: str, num_classes: int):
-    """Export HuggingFace Conditional DETR to ONNX using optimum-cli."""
-    print(f"Exporting to ONNX → {onnx_dir}")
+class _DetrExportWrapper(torch.nn.Module):
+    """Wraps ConditionalDetr so torch.onnx.export sees a single-tensor input."""
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
 
-    # Load model and weights
+    def forward(self, pixel_values):
+        out = self.model(pixel_values=pixel_values)
+        return out.logits, out.pred_boxes
+
+
+def export_to_onnx(weights_path: str, onnx_dir: str, num_classes: int):
+    """Export fine-tuned Conditional DETR to ONNX via torch.onnx.export."""
+    print(f"Exporting to ONNX → {onnx_dir}")
+    os.makedirs(onnx_dir, exist_ok=True)
+
     from transformers import AutoModelForObjectDetection
     model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50",
         num_labels=num_classes,
         ignore_mismatched_sizes=True,
     )
-    state_dict = torch.load(weights_path, map_location="cpu")
+    state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
     model.load_state_dict(state_dict)
     model.eval()
 
-    # Export via optimum-cli
-    result = subprocess.run(
-        [
-            "optimum-cli", "export", "onnx",
-            "--model", "microsoft/conditional-detr-resnet-50",
-            "--task", "object-detection",
-            onnx_dir,
-        ],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        print(f"optimum-cli stderr: {result.stderr}")
-        # Fallback: manual torch.onnx.export
-        print("Falling back to manual ONNX export...")
-        _manual_onnx_export(model, onnx_dir)
-    else:
-        print("ONNX export via optimum-cli complete.")
-
-
-def _manual_onnx_export(model, onnx_dir: str):
-    os.makedirs(onnx_dir, exist_ok=True)
+    wrapper = _DetrExportWrapper(model)
     dummy = torch.randn(1, 3, 800, 800)
     onnx_path = os.path.join(onnx_dir, "model.onnx")
+
     torch.onnx.export(
-        model,
+        wrapper,
         dummy,
         onnx_path,
         input_names=["pixel_values"],
@@ -90,8 +79,9 @@ def _manual_onnx_export(model, onnx_dir: str):
             "pred_boxes": {0: "batch"},
         },
         opset_version=16,
+        do_constant_folding=True,
     )
-    print(f"Manual ONNX export complete → {onnx_path}")
+    print(f"ONNX export complete → {onnx_path}")
 
 
 def quantize_int8(onnx_dir: str) -> str:
