@@ -1,0 +1,32 @@
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "com.robops.ros2stack",
+  "ComponentVersion": "PLACEHOLDER_VERSION",
+  "ComponentDescription": "ROS2 camera_node stack — publishes /camera/image_raw for detr_node",
+  "ComponentPublisher": "robops",
+  "ComponentDependencies": {
+    "aws.greengrass.DockerApplicationManager": {
+      "VersionRequirement": ">=2.0.0",
+      "DependencyType": "HARD"
+    },
+    "aws.greengrass.TokenExchangeService": {
+      "VersionRequirement": ">=2.0.0",
+      "DependencyType": "HARD"
+    }
+  },
+  "Lifecycle": {
+    "Run": {
+      "Script": "docker run --rm \\\n  --name robops-ros2stack \\\n  --network host \\\n  --device /dev/video0:/dev/video0 \\\n  -e ROBOT_ID={configuration:/robotId} \\\n  -e CAMERA_DEVICE=0 \\\n  -e CAMERA_FPS=5 \\\n  -e MONGO_URI={secrets:robops/mongo_uri} \\\n  688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack:PLACEHOLDER_DATASET_VERSION",
+      "RequiresPrivilege": false
+    },
+    "Shutdown": {
+      "Script": "docker stop robops-ros2stack || true"
+    }
+  },
+  "ComponentConfiguration": {
+    "DefaultConfiguration": {
+      "robotId": "pi3b-001",
+      "cameraFps": 5
+    }
+  }
+}

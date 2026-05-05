@@ -1,0 +1,42 @@
+{
+  "RecipeFormatVersion": "2020-01-25",
+  "ComponentName": "com.robops.inference",
+  "ComponentVersion": "PLACEHOLDER_VERSION",
+  "ComponentDescription": "DETR INT8 ONNX inference node — runs inside arm64 Docker container",
+  "ComponentPublisher": "robops",
+  "ComponentDependencies": {
+    "aws.greengrass.DockerApplicationManager": {
+      "VersionRequirement": ">=2.0.0",
+      "DependencyType": "HARD"
+    },
+    "aws.greengrass.TokenExchangeService": {
+      "VersionRequirement": ">=2.0.0",
+      "DependencyType": "HARD"
+    }
+  },
+  "Artifacts": [
+    {
+      "URI": "s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/weights/detr/PLACEHOLDER_DATASET_VERSION/model_int8.onnx",
+      "Unarchive": "NONE",
+      "Permission": {
+        "Read": "OWNER"
+      }
+    }
+  ],
+  "Lifecycle": {
+    "Run": {
+      "Script": "docker run --rm \\\n  --name robops-inference \\\n  --network host \\\n  -e MODEL_PATH={artifacts:path}/model_int8.onnx \\\n  -e SHADOW_MODE=false \\\n  -e CONFIDENCE_THRESHOLD=0.5 \\\n  -e ROBOT_ID={configuration:/robotId} \\\n  -e MONGO_URI={secrets:robops/mongo_uri} \\\n  688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/inference:PLACEHOLDER_DATASET_VERSION",
+      "RequiresPrivilege": false
+    },
+    "Shutdown": {
+      "Script": "docker stop robops-inference || true"
+    }
+  },
+  "ComponentConfiguration": {
+    "DefaultConfiguration": {
+      "robotId": "pi3b-001",
+      "shadowMode": false,
+      "confidenceThreshold": 0.5
+    }
+  }
+}
