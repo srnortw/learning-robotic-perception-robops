@@ -1,0 +1,168 @@
+name: CI — ONNX Export, Quantize, Push to ECR
+
+# Triggers:
+#   1. params.yaml change pushed to main → quantize + package
+#   2. Manual dispatch with mlflow run_id (after Colab training)
+#   3. Phase F retrain trigger (workflow_dispatch with retrain: true)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pipeline/phase_c/detr/params.yaml'
+  workflow_dispatch:
+    inputs:
+      model_run_id:
+        description: 'MLflow run ID from Colab training (required)'
+        required: true
+        type: string
+      dataset_version:
+        description: 'Dataset version (e.g. v1)'
+        required: true
+        default: 'v1'
+        type: string
+      retrain:
+        description: 'Triggered by Phase F drift retrain?'
+        required: false
+        default: 'false'
+        type: string
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REGISTRY: 688567275774.dkr.ecr.eu-central-1.amazonaws.com
+  ECR_REPO_TRAINING: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/training
+  S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
+
+jobs:
+  # ── Job 1: ONNX Export + INT8 Quantization ─────────────────────────────
+  export-and-quantize:
+    name: Export ONNX + INT8 Quantize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install export dependencies
+        run: |
+          pip install torch==2.2.0 torchvision==0.17.0 transformers==4.40.0 \
+                      optimum[onnxruntime]==1.19.0 onnxruntime==1.17.1 \
+                      mlflow==2.12.1 dagshub==0.3.25 boto3==1.34.69 \
+                      pyyaml==6.0.1 numpy==1.26.4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Extract dataset version from params.yaml
+        id: params
+        run: |
+          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
+          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Dataset version: $VERSION"
+
+      - name: Run ONNX export + INT8 quantization
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          python pipeline/phase_c/detr/export_onnx.py \
+            --dataset-version ${{ steps.params.outputs.dataset_version }} \
+            --run-id ${{ inputs.model_run_id || 'latest' }}
+
+      - name: Verify INT8 model in S3
+        run: |
+          VERSION=${{ steps.params.outputs.dataset_version }}
+          aws s3 ls s3://${{ env.S3_BUCKET }}/weights/detr/$VERSION/model_int8.onnx
+          echo "INT8 model confirmed in S3"
+
+  # ── Job 2: Build + Push Training Docker Image ───────────────────────────
+  build-training-image:
+    name: Build Training Docker Image → ECR
+    runs-on: ubuntu-latest
+    needs: export-and-quantize
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
+            | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
+
+      - name: Extract dataset version
+        id: params
+        run: |
+          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
+          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build and push training image
+        run: |
+          VERSION=${{ steps.params.outputs.dataset_version }}
+          IMAGE_TAG="${{ env.ECR_REPO_TRAINING }}:${VERSION}"
+          IMAGE_LATEST="${{ env.ECR_REPO_TRAINING }}:latest"
+
+          docker build \
+            -f docker/training/Dockerfile \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            .
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+          echo "Pushed: $IMAGE_TAG"
+
+  # ── Job 3: Notify completion ─────────────────────────────────────────────
+  notify:
+    name: Notify Phase D
+    runs-on: ubuntu-latest
+    needs: [export-and-quantize, build-training-image]
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: params
+        run: |
+          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
+          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Send Discord notification
+        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          VERSION=${{ steps.params.outputs.dataset_version }}
+          STATUS="${{ needs.export-and-quantize.result }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DAGSHUB_URL="https://dagshub.com/srnortw/learning-robotic-perception-robops/experiments"
+
+          MESSAGE="**[RoboOps Phase C]** ONNX export \`${STATUS}\` | Dataset: \`${VERSION}\`\n"
+          MESSAGE+="INT8 model → \`s3://${{ env.S3_BUCKET }}/weights/detr/${VERSION}/model_int8.onnx\`\n"
+          MESSAGE+="MLflow: ${DAGSHUB_URL} | Actions: ${RUN_URL}\n"
+          MESSAGE+="**→ Ready for Phase D human audit**"
+
+          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"$MESSAGE\"}"
