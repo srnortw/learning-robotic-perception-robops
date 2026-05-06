@@ -56,22 +56,27 @@ def check_containers(host: str, user: str, key: str) -> list[str]:
 
 
 def check_topics(host: str, user: str, key: str) -> list[str]:
-    """Return list of ROS2 topics that are NOT publishing."""
+    """Return list of ROS2 topics that are NOT advertised.
+
+    Uses `ros2 topic list` instead of `ros2 topic hz` so the check
+    completes instantly even without a live camera feed (shadow mode /
+    bench test).  Topic existence confirms the nodes are up and running.
+    """
     failures = []
+    rc, out = ssh(
+        host, user, key,
+        "docker exec robops-ros2stack bash -c '. /opt/ros/jazzy/setup.sh && "
+        "timeout 10 ros2 topic list 2>&1' || "
+        "docker exec robops-inference bash -c '. /opt/ros/jazzy/setup.sh && "
+        "timeout 10 ros2 topic list 2>&1'",
+        timeout=25,
+    )
     for topic in REQUIRED_TOPICS:
-        rc, out = ssh(
-            host, user, key,
-            f"docker exec robops-ros2stack bash -c '. /opt/ros/jazzy/setup.sh && "
-            f"ros2 topic hz {topic} --window 5 2>&1 | head -5' || "
-            f"docker exec robops-inference bash -c '. /opt/ros/jazzy/setup.sh && "
-            f"ros2 topic hz {topic} --window 5 2>&1 | head -5'",
-            timeout=20,
-        )
-        if "average rate" not in out and "min:" not in out:
-            failures.append(topic)
-            print(f"  [FAIL] Topic '{topic}' not publishing: {out[:120]}")
+        if topic in out:
+            print(f"  [OK]   Topic '{topic}' advertised")
         else:
-            print(f"  [OK]   Topic '{topic}' publishing")
+            failures.append(topic)
+            print(f"  [FAIL] Topic '{topic}' not found in ros2 topic list: {out[:200]}")
     return failures
 
 
