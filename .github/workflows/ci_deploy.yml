@@ -436,7 +436,7 @@ jobs:
   # ── Job 8: Greengrass canary deployment ─────────────────────────────────
   deploy-canary:
     name: Phase E — Deploy to canary Pi (Greengrass)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [build-inference-image, build-ros2stack-image]
     if: >
       github.event_name == 'pull_request' &&
@@ -516,12 +516,7 @@ jobs:
           echo "Canary deployment triggered → group-canary (${{ env.GG_THING_NAME }})"
 
       - name: Post-deploy health check
-        env:
-          PI_SSH_KEY: ${{ secrets.PI_SSH_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          echo "$PI_SSH_KEY" > ~/.ssh/robops_pi
-          chmod 600 ~/.ssh/robops_pi
           python pipeline/phase_e/health_check.py \
             --host ${{ secrets.PI_HOST }} \
             --user ${{ env.PI_USER }} \
