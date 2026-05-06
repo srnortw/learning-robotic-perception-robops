@@ -181,7 +181,7 @@ jobs:
         run: |
           dvc remote modify s3remote access_key_id     ${{ secrets.AWS_ACCESS_KEY_ID }}
           dvc remote modify s3remote secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          dvc pull data/holdout.dvc --run-cache || echo "WARNING: holdout pull failed — falling back to synthetic"
+          dvc pull data/detr/holdout.dvc --run-cache || echo "WARNING: holdout pull failed — falling back to synthetic"
 
       - name: Extract dataset version
         id: params
