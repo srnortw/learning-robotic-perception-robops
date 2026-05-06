@@ -1,15 +1,18 @@
 architecture: detr
 annotation_format: coco_json
-dataset_version: v1
+dataset_version: v2
 
-# Keep this schema consistent across all architecture rounds (DETR → RT-DETR → Mask2Former → SAM2)
-# so model performance is comparable on the same classes.
+# Construction safety dataset — Round 1 test with real Roboflow data.
+# Source: test-mfeql/construction-safety-gsnvb-pwuow
+# Swap back to indoor classes (person, chair, table, door) for production round.
 classes:
   - id: 0
     name: person
   - id: 1
-    name: chair
+    name: helmet
   - id: 2
-    name: table
+    name: vest
   - id: 3
-    name: door
+    name: no-helmet
+  - id: 4
+    name: no-vest

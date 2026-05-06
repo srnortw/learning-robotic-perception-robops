@@ -8,6 +8,7 @@ detr_node:
     architecture: detr
     class_names:
     - person
-    - chair
-    - table
-    - door
+    - helmet
+    - vest
+    - no-helmet
+    - no-vest

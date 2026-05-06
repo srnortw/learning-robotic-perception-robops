@@ -17,10 +17,10 @@ preprocessing:
 dataset:
   train_split: 0.85
   val_split: 0.15
-  mds_path: s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/mds/detr/v1/
+  mds_path: s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/mds/detr/v2/
   holdout_path: s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/data/detr/holdout/
-  dataset_version: v1
-  num_classes: 4
+  dataset_version: v2
+  num_classes: 5
 model:
   architecture: conditional-detr-resnet-50
   hf_model_id: microsoft/conditional-detr-resnet-50
