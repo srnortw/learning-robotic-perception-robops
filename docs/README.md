@@ -39,6 +39,7 @@ Phase A → Phase B → Phase C → Phase D → Phase E → Phase F
 - [04_PHASE_D_HUMAN_AUDIT](pipeline_plans/04_PHASE_D_HUMAN_AUDIT.md) — champion-challenger, threshold policy, model card
 - [05_PHASE_E_DEPLOYMENT](pipeline_plans/05_PHASE_E_DEPLOYMENT.md) — ECR, docker buildx arm64, Greengrass, canary, rollback
 - [06_PHASE_F_MONITORING](pipeline_plans/06_PHASE_F_MONITORING.md) — monitoring node, Evidently AI drift detection, retrain loop
+- [DATASETS](DATASETS.md) — Roboflow dataset guide, class remapping, multi-round dataset strategy
 
 ---
 
