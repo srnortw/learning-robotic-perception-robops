@@ -23,7 +23,7 @@ class DetrNode(Node):
         self.declare_parameter('upload_every_nth_frame', 30)
         self.declare_parameter('robot_id', 'pi3b-001')
         self.declare_parameter('architecture', 'detr')
-        self.declare_parameter('class_names', ['person', 'chair', 'table', 'door'])
+        self.declare_parameter('class_names', ['person', 'helmet', 'vest', 'no-helmet', 'no-vest'])
 
         self.model_path = self.get_parameter('model_path').value
         self.shadow_mode = self.get_parameter('shadow_mode').value

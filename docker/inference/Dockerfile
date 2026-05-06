@@ -17,6 +17,7 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     boto3
 
 COPY ros2_ws/src/detr_node/ /ros2_ws/src/detr_node/
+COPY pipeline/phase_b/label_schema.yaml /config/label_schema.yaml
 
 WORKDIR /ros2_ws
 RUN . /opt/ros/jazzy/setup.sh && \
@@ -33,6 +34,7 @@ ENTRYPOINT ["/bin/bash", "-c", \
      . /ros2_ws/install/setup.sh && \
      ros2 run detr_node detr_node \
        --ros-args \
+       --params-file /ros2_ws/src/detr_node/config/detr_params.yaml \
        -p model_path:=${MODEL_PATH} \
        -p shadow_mode:=${SHADOW_MODE} \
        -p confidence_threshold:=${CONFIDENCE_THRESHOLD} \
