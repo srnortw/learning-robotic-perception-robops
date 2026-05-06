@@ -265,8 +265,9 @@ def compute_map(coco_gt: dict, coco_dt: list) -> dict:
         ev2.params.iouThrs = np.array([0.5])
         ev2.evaluate()
         ev2.accumulate()
-        # stats[1] = AP@50; may be empty if no GT/DT for this class
-        ap50 = float(ev2.stats[1]) if len(ev2.stats) > 1 else 0.0
+        ev2.summarize()
+        # With iouThrs=[0.5], stats[0] is AP@0.50 for this class
+        ap50 = float(ev2.stats[0]) if len(ev2.stats) > 0 else 0.0
         per_class[name] = round(ap50, 4)
 
     metrics["per_class_ap50"] = per_class
