@@ -169,10 +169,12 @@ def main():
 
         issues = check_regression(baseline, poll)
         status = "✗ REGRESSION" if issues else "✓ healthy"
+        conf_str = f"{poll['mean_confidence']:.3f}" if poll['mean_confidence'] else "n/a"
+        lat_str  = f"{poll['latency_p95_ms']:.0f}" if poll['latency_p95_ms'] else "n/a"
         print(f"  Poll {poll_num:02d} [{now.strftime('%H:%M')}] "
               f"docs={poll['doc_count']} "
-              f"conf={poll['mean_confidence'] or 'n/a':.3f if poll['mean_confidence'] else 'n/a'} "
-              f"lat={poll['latency_p95_ms'] or 'n/a':.0f if poll['latency_p95_ms'] else 'n/a'}ms "
+              f"conf={conf_str} "
+              f"lat={lat_str}ms "
               f"→ {status}")
 
         if issues:
