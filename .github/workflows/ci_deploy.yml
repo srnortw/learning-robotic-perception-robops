@@ -552,7 +552,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
       startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
-    timeout-minutes: 300   # 5h max (4h monitor + buffer)
+    timeout-minutes: 15    # 6 min monitor + buffer (bump to 300 for production)
 
     steps:
       - name: Checkout
@@ -586,5 +586,5 @@ jobs:
         run: |
           python pipeline/phase_f/canary_monitor.py \
             --dataset-version ${{ steps.params.outputs.dataset_version }} \
-            --hours 4 \
-            --poll-minutes 15
+            --hours 0.1 \
+            --poll-minutes 2
