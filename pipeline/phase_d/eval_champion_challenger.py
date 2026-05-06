@@ -38,10 +38,20 @@ MODEL_NAME   = "detr-conditional-resnet50"
 MIN_MAP      = 0.0          # Round 1: any model that runs is acceptable
 CONF_THRESH  = 0.3          # minimum score for a detection to count
 IOU_THRESH   = 0.5
-CRITICAL_CLASSES = {"person", "door"}
-CLASSES      = {0: "person", 1: "chair", 2: "table", 3: "door"}
 
+SCHEMA_PATH  = "pipeline/phase_b/label_schema.yaml"
 PARAMS_PATH  = "pipeline/phase_c/detr/params.yaml"
+
+
+def _load_schema_classes() -> dict:
+    """Return {id: name} from label_schema.yaml — single source of truth."""
+    with open(SCHEMA_PATH) as f:
+        schema = yaml.safe_load(f)
+    return {c["id"]: c["name"] for c in schema["classes"]}
+
+
+CLASSES = _load_schema_classes()
+CRITICAL_CLASSES = set(CLASSES.values())
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
