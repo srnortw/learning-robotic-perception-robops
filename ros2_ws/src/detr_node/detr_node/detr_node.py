@@ -23,6 +23,7 @@ class DetrNode(Node):
         self.declare_parameter('upload_every_nth_frame', 30)
         self.declare_parameter('robot_id', 'pi3b-001')
         self.declare_parameter('architecture', 'detr')
+        self.declare_parameter('class_names', ['person', 'chair', 'table', 'door'])
 
         self.model_path = self.get_parameter('model_path').value
         self.shadow_mode = self.get_parameter('shadow_mode').value
@@ -30,6 +31,7 @@ class DetrNode(Node):
         self.upload_every_nth = self.get_parameter('upload_every_nth_frame').value
         self.robot_id = self.get_parameter('robot_id').value
         self.architecture = self.get_parameter('architecture').value
+        self.class_names = list(self.get_parameter('class_names').value)
 
         self.bridge = CvBridge()
         self.frame_count = 0
@@ -45,7 +47,8 @@ class DetrNode(Node):
 
         self.get_logger().info(
             f'detr_node started | shadow_mode={self.shadow_mode} | '
-            f'model={self.model_path} | robot_id={self.robot_id}'
+            f'model={self.model_path} | robot_id={self.robot_id} | '
+            f'classes={self.class_names}'
         )
 
     def _load_model(self):
@@ -55,7 +58,7 @@ class DetrNode(Node):
             )
             return
         try:
-            self.model = DetrOnnxInference(self.model_path)
+            self.model = DetrOnnxInference(self.model_path, class_names=self.class_names)
             self.get_logger().info(f'ONNX model loaded from {self.model_path}')
         except Exception as e:
             self.get_logger().error(f'Failed to load model: {e}')

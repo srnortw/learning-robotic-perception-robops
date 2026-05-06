@@ -21,6 +21,10 @@ REPO_ROOT = Path(__file__).parents[2]
 PARAMS_PATH = REPO_ROOT / "pipeline" / "phase_c" / "detr" / "params.yaml"
 BUCKET = os.environ.get("ROBOPS_S3_BUCKET", "my-perception-robops-data-2026-688567275774-eu-central-1-an")
 
+# Allow running as a standalone script without the package installed
+sys.path.insert(0, str(REPO_ROOT))
+from pipeline.utils.schema import Schema
+
 
 def load_coco(coco_path: Path) -> dict:
     with open(coco_path) as f:
@@ -86,8 +90,12 @@ def update_params_yaml(version: str):
         yaml.dump(params, f, default_flow_style=False, sort_keys=False)
 
     print(f"[convert_to_mds] params.yaml updated: mds_path → s3://{BUCKET}/mds/detr/{version}/")
+
+    # Sync num_classes + detr_params.yaml class_names from label_schema.yaml
+    Schema.sync()
+
     print(f"[convert_to_mds] Now run:")
-    print(f"    git add pipeline/phase_c/detr/params.yaml")
+    print(f"    git add pipeline/phase_c/detr/params.yaml ros2_ws/src/detr_node/config/detr_params.yaml")
     print(f"    git commit -m 'data: bump mds_path to detr {version} — triggers training CI'")
     print(f"    git push")
 
