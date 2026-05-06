@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-vision-msgs \
     v4l-utils \
     libcamera-dev \
-    libcamera-apps \
+    python3-libcamera \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir --break-system-packages \
