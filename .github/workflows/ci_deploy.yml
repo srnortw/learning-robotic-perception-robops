@@ -502,8 +502,8 @@ jobs:
             --components "{
               \"com.robops.inference\": {\"componentVersion\": \"${SEMVER}\"},
               \"com.robops.ros2stack\": {\"componentVersion\": \"${SEMVER}\"},
-              \"aws.greengrass.DockerApplicationManager\": {\"componentVersion\": \">=2.0.0\"},
-              \"aws.greengrass.TokenExchangeService\": {\"componentVersion\": \">=2.0.0\"}
+              \"aws.greengrass.DockerApplicationManager\": {\"componentVersion\": \"2.0.16\"},
+              \"aws.greengrass.TokenExchangeService\": {\"componentVersion\": \"2.0.3\"}
             }" \
             --deployment-policies '{
               "failureHandlingPolicy": "ROLLBACK",
