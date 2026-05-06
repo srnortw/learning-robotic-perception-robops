@@ -168,7 +168,7 @@ jobs:
       - name: Install eval dependencies
         run: |
           pip install onnxruntime mlflow dagshub boto3 \
-                      pycocotools pyyaml numpy Pillow requests
+                      pycocotools pyyaml numpy Pillow requests dvc[s3]
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -176,6 +176,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Pull holdout set from S3 (DVC)
+        run: |
+          dvc remote modify s3remote access_key_id     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          dvc remote modify s3remote secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          dvc pull data/holdout.dvc --run-cache || echo "WARNING: holdout pull failed — falling back to synthetic"
 
       - name: Extract dataset version
         id: params
