@@ -2,3 +2,4 @@
 raw/
 holdout/
 cvat_queue.json
+/holdout
