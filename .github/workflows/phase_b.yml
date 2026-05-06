@@ -1,0 +1,112 @@
+name: Phase B — Roboflow Download + MDS Conversion
+
+# Manually triggered from GitHub Actions UI.
+# Downloads a Roboflow dataset, converts it to MDS shards on S3,
+# updates params.yaml with the new mds_path, and commits — which
+# automatically triggers ci_deploy.yml (training pipeline).
+
+on:
+  workflow_dispatch:
+    inputs:
+      workspace:
+        description: 'Roboflow workspace slug'
+        required: true
+        type: string
+      project:
+        description: 'Roboflow project slug'
+        required: true
+        type: string
+      version:
+        description: 'Roboflow dataset version number'
+        required: true
+        default: '1'
+        type: string
+      dataset_version:
+        description: 'MDS version tag (e.g. v2) — used for S3 path and params.yaml'
+        required: true
+        default: 'v2'
+        type: string
+      remap:
+        description: 'Class remaps (space-separated, e.g. "dining table:table" "Persons:person")'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Dry run — check class mapping only, no files written'
+        required: false
+        default: 'false'
+        type: string
+
+env:
+  AWS_REGION: eu-central-1
+  S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
+
+jobs:
+  phase-b:
+    name: Phase B — Download + MDS Convert
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install roboflow pyyaml mosaicml-streaming Pillow boto3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download dataset from Roboflow
+        env:
+          ROBOPS_S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          REMAP_ARGS=""
+          if [ -n "${{ inputs.remap }}" ]; then
+            # Convert space-separated remap string into --remap args
+            while IFS= read -r pair; do
+              REMAP_ARGS="$REMAP_ARGS --remap \"$pair\""
+            done <<< "$(echo '${{ inputs.remap }}' | tr ' ' '\n' | grep .)"
+          fi
+
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          eval python pipeline/phase_b/roboflow_download.py \
+            --api-key "${{ secrets.ROBOFLOW_API_KEY }}" \
+            --workspace "${{ inputs.workspace }}" \
+            --project   "${{ inputs.project }}" \
+            --version   "${{ inputs.version }}" \
+            $REMAP_ARGS \
+            $DRY_RUN_FLAG
+
+      - name: Convert to MDS shards → S3
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          ROBOPS_S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          python pipeline/phase_b/convert_to_mds.py \
+            --version "${{ inputs.dataset_version }}" \
+            --coco-json data/detr/raw/annotations.json
+
+      - name: Commit updated params.yaml → triggers training CI
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pipeline/phase_c/detr/params.yaml
+          git diff --cached --quiet && echo "params.yaml unchanged — skipping commit" && exit 0
+          git commit -m "data: bump mds_path to detr ${{ inputs.dataset_version }} (roboflow ${{ inputs.workspace }}/${{ inputs.project }} v${{ inputs.version }})"
+          git push
