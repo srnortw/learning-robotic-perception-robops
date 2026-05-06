@@ -1,0 +1,23 @@
+{
+  "run_id": "fbac129806eb406db5b740faa07b8300",
+  "model_version": "2",
+  "dataset_version": "v2",
+  "challenger": {
+    "map50_95": 0.0,
+    "map50": 0.0,
+    "per_class_ap50": {
+      "person": 0.0,
+      "helmet": 0.0,
+      "vest": 0.0,
+      "no-helmet": 0.0,
+      "no-vest": 0.0
+    },
+    "latency_p95_ms": 2080.4148916499657
+  },
+  "champion": null,
+  "delta_map50": 0.0,
+  "critical_regressions": [],
+  "auto_approved": true,
+  "model_name": "detr-conditional-resnet50",
+  "holdout_size": 20
+}
