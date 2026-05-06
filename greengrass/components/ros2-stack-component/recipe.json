@@ -28,7 +28,7 @@
       },
       "Lifecycle": {
         "Run": {
-          "Script": "docker run --rm --name robops-ros2stack --network host --privileged --device /dev/video0 --device /dev/media0 --device /dev/media1 --device /dev/media2 --device /dev/media3 -v /run/udev:/run/udev:ro -e ROBOT_ID={configuration:/robotId} -e CAMERA_DEVICE=0 -e CAMERA_FPS=5 -e MONGO_URI={secrets:robops/mongo_uri} 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack:PLACEHOLDER_DATASET_VERSION"
+          "Script": "docker run --rm --name robops-ros2stack --network host -e ROBOT_ID={configuration:/robotId} -e DATASET_VERSION=PLACEHOLDER_DATASET_VERSION -e MONGO_URI={secrets:robops/mongo_uri} 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack:PLACEHOLDER_DATASET_VERSION"
         },
         "Shutdown": {
           "Script": "docker stop robops-ros2stack || true"
