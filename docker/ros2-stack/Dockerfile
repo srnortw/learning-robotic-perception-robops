@@ -33,4 +33,9 @@ ENV DATASET_VERSION=v1
 COPY docker/ros2-stack/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Disable Fast-DDS shared memory transport so messages cross Docker IPC
+# namespace boundaries (both containers use --network host but separate IPC).
+COPY docker/fastdds_no_shm.xml /etc/fastdds/dds_profile.xml
+ENV FASTRTPS_DEFAULT_PROFILES_FILE=/etc/fastdds/dds_profile.xml
+
 ENTRYPOINT ["/entrypoint.sh"]

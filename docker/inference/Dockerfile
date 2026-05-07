@@ -32,6 +32,11 @@ ENV ROBOT_ID=pi3b-001
 # container which also runs with --network host on the same Pi.
 ENV ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
+# Disable Fast-DDS shared memory transport so messages cross Docker IPC
+# namespace boundaries (both containers use --network host but separate IPC).
+COPY docker/fastdds_no_shm.xml /etc/fastdds/dds_profile.xml
+ENV FASTRTPS_DEFAULT_PROFILES_FILE=/etc/fastdds/dds_profile.xml
+
 ENTRYPOINT ["/bin/bash", "-c", \
     ". /opt/ros/jazzy/setup.sh && \
      . /ros2_ws/install/setup.sh && \
