@@ -65,5 +65,5 @@ This is Round 1 — no prior champion exists. Model is the first to be considere
 |---|---|
 | Reviewer | srnortw |
 | Approval date | 2026-05-07 |
-| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/21) |
+| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/22) |
 | MLflow Registry | `detr-conditional-resnet50` v3 |
