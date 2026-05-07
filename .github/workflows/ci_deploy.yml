@@ -236,8 +236,13 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
+      # pull_request-event default checkout is refs/pull/N/merge not main.
+      # Committing there then pushing main rejects as non-fast-forward.
+      - name: Checkout main (post-merge tip)
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -277,7 +282,9 @@ jobs:
           git add pipeline/phase_d/model_card.md
           DATASET_VER=$(python3 -c "import json; print(json.load(open('pipeline/phase_d/eval_results.json'))['dataset_version'])")
           git diff --cached --quiet || git commit -m "docs: add model card for DETR ${DATASET_VER}"
-          git push
+          git fetch origin main
+          git pull --rebase origin main
+          git push origin main
 
   # ── Job 5: Notify completion ─────────────────────────────────────────────
   notify:
