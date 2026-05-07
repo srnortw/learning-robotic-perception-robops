@@ -28,6 +28,9 @@ ENV MODEL_PATH=/greengrass/v2/packages/artifacts/com.robops.inference/current/mo
 ENV SHADOW_MODE=false
 ENV CONFIDENCE_THRESHOLD=0.5
 ENV ROBOT_ID=pi3b-001
+# Restrict DDS discovery to loopback so it communicates with the ros2-stack
+# container which also runs with --network host on the same Pi.
+ENV ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 
 ENTRYPOINT ["/bin/bash", "-c", \
     ". /opt/ros/jazzy/setup.sh && \
