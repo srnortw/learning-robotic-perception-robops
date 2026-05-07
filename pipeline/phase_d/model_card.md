@@ -11,7 +11,7 @@
 | MLflow run | [15548dfd](https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow/#/experiments/0/runs/15548dfdffdd4098bed0fad2510d2da6) |
 | S3 weights | `s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/weights/detr/v2/model_int8.onnx` |
 | Dataset version | v2 |
-| Training date | 2026-05-06 |
+| Training date | 2026-05-07 |
 
 ## Training Data
 
@@ -64,6 +64,6 @@ This is Round 1 — no prior champion exists. Model is the first to be considere
 | Field | Value |
 |---|---|
 | Reviewer | srnortw |
-| Approval date | 2026-05-06 |
-| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/20) |
+| Approval date | 2026-05-07 |
+| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/21) |
 | MLflow Registry | `detr-conditional-resnet50` v3 |
