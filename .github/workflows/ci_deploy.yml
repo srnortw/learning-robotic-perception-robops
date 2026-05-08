@@ -38,6 +38,7 @@ env:
   ECR_REPO_TRAINING: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/training
   ECR_REPO_INFERENCE: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/inference
   ECR_REPO_ROS2STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack
+  ECR_REPO_FULL_STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-full-stack
   S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
   ACCOUNT_ID: "688567275774"
   GREENGRASS_REGION: eu-central-1
@@ -322,9 +323,11 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"content\": \"$MESSAGE\"}"
 
-  # ── Job 6: Build arm64 inference image → ECR (on deploy/detr-* PR merge) ─
-  build-inference-image:
-    name: Phase E — Build inference image (arm64)
+  # ── Job 6: Build arm64 combined full-stack image → ECR ──────────────────
+  # Combines camera_node + detr_node + monitoring_node into one container to
+  # avoid cross-container DDS issues and halve memory overhead on Pi 3B+.
+  build-full-stack-image:
+    name: Phase E — Build full-stack image (arm64)
     runs-on: ubuntu-latest
     if: >
       github.event_name == 'pull_request' &&
@@ -357,9 +360,9 @@ jobs:
 
       - name: Create ECR repo if missing
         run: |
-          aws ecr describe-repositories --repository-names robops/inference \
+          aws ecr describe-repositories --repository-names robops/ros2-full-stack \
             --region ${{ env.AWS_REGION }} 2>/dev/null || \
-          aws ecr create-repository --repository-name robops/inference \
+          aws ecr create-repository --repository-name robops/ros2-full-stack \
             --region ${{ env.AWS_REGION }}
 
       - name: Extract dataset version
@@ -368,75 +371,16 @@ jobs:
           VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
           echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build and push inference image (arm64)
+      - name: Build and push full-stack image (arm64)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/inference/Dockerfile
+          file: docker/ros2-full-stack/Dockerfile
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ env.ECR_REPO_INFERENCE }}:${{ steps.params.outputs.dataset_version }}
-            ${{ env.ECR_REPO_INFERENCE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ── Job 7: Build arm64 ros2-stack image → ECR ───────────────────────────
-  build-ros2stack-image:
-    name: Phase E — Build ros2-stack image (arm64)
-    runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
-            | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-
-      - name: Create ECR repo if missing
-        run: |
-          aws ecr describe-repositories --repository-names robops/ros2-stack \
-            --region ${{ env.AWS_REGION }} 2>/dev/null || \
-          aws ecr create-repository --repository-name robops/ros2-stack \
-            --region ${{ env.AWS_REGION }}
-
-      - name: Extract dataset version
-        id: params
-        run: |
-          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
-          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and push ros2-stack image (arm64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/ros2-stack/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.ECR_REPO_ROS2STACK }}:${{ steps.params.outputs.dataset_version }}
-            ${{ env.ECR_REPO_ROS2STACK }}:latest
+            ${{ env.ECR_REPO_FULL_STACK }}:${{ steps.params.outputs.dataset_version }}
+            ${{ env.ECR_REPO_FULL_STACK }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -444,7 +388,7 @@ jobs:
   deploy-canary:
     name: Phase E — Deploy to canary Pi (Greengrass)
     runs-on: self-hosted
-    needs: [build-inference-image, build-ros2stack-image]
+    needs: [build-full-stack-image]
     if: >
       github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
@@ -477,28 +421,26 @@ jobs:
           echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
           echo "component_version=${NUM}.0.0" >> $GITHUB_OUTPUT
 
-      - name: Stamp component version into recipes
+      - name: Stamp component version into recipe
         run: |
           VERSION=${{ steps.params.outputs.dataset_version }}
           SEMVER=${{ steps.params.outputs.component_version }}
           sed -i "s/PLACEHOLDER_VERSION/${SEMVER}/g" \
-            greengrass/components/inference-component/recipe.json \
-            greengrass/components/ros2-stack-component/recipe.json
+            greengrass/components/full-stack-component/recipe.json
           sed -i "s/PLACEHOLDER_DATASET_VERSION/${VERSION}/g" \
-            greengrass/components/inference-component/recipe.json \
-            greengrass/components/ros2-stack-component/recipe.json
+            greengrass/components/full-stack-component/recipe.json
 
-      - name: Create Greengrass component versions
+      - name: Create Greengrass component version
         run: |
-          SEMVER=${{ steps.params.outputs.component_version }}
-
           aws greengrassv2 create-component-version \
-            --inline-recipe fileb://greengrass/components/inference-component/recipe.json \
-            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist"
-
+            --inline-recipe fileb://greengrass/components/full-stack-component/recipe.json \
+            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist — deleting and recreating"
+          aws greengrassv2 delete-component \
+            --arn "arn:aws:greengrass:${{ env.GREENGRASS_REGION }}:${{ env.ACCOUNT_ID }}:components:com.robops.stack:versions:${{ steps.params.outputs.component_version }}" \
+            --region ${{ env.GREENGRASS_REGION }} 2>/dev/null || true
           aws greengrassv2 create-component-version \
-            --inline-recipe fileb://greengrass/components/ros2-stack-component/recipe.json \
-            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist"
+            --inline-recipe fileb://greengrass/components/full-stack-component/recipe.json \
+            --region ${{ env.GREENGRASS_REGION }}
 
       - name: Deploy to canary group
         run: |
@@ -507,8 +449,7 @@ jobs:
             --target-arn "${{ env.CANARY_GROUP_ARN }}" \
             --deployment-name "robops-canary-detr-${{ steps.params.outputs.dataset_version }}" \
             --components "{
-              \"com.robops.inference\": {\"componentVersion\": \"${SEMVER}\"},
-              \"com.robops.ros2stack\": {\"componentVersion\": \"${SEMVER}\"},
+              \"com.robops.stack\": {\"componentVersion\": \"${SEMVER}\"},
               \"aws.greengrass.DockerApplicationManager\": {\"componentVersion\": \"2.0.16\"},
               \"aws.greengrass.TokenExchangeService\": {\"componentVersion\": \"2.0.3\"}
             }" \
@@ -538,7 +479,7 @@ jobs:
           VERSION=${{ steps.params.outputs.dataset_version }}
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           MESSAGE="**[RoboOps Phase E]** Canary deployed DETR \`${VERSION}\` → \`${{ env.GG_THING_NAME }}\` ✓\n"
-          MESSAGE+="Inference image: \`${{ env.ECR_REPO_INFERENCE }}:${VERSION}\`\n"
+          MESSAGE+="Full-stack image: \`${{ env.ECR_REPO_FULL_STACK }}:${VERSION}\`\n"
           MESSAGE+="Phase F monitoring starting — fleet promotion after canary window.\n"
           MESSAGE+="Actions: ${RUN_URL}"
           curl -s -X POST "$DISCORD_WEBHOOK_URL" \
