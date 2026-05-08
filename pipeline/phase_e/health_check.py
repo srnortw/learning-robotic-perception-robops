@@ -25,7 +25,7 @@ import subprocess
 import sys
 import time
 
-REQUIRED_CONTAINERS  = ["robops-inference", "robops-ros2stack"]
+REQUIRED_CONTAINERS  = ["robops-stack"]
 REQUIRED_TOPICS      = ["/camera/image_raw", "/detr/detections"]
 MAX_CPU_PERCENT      = 95.0
 LATENCY_MULTIPLIER   = 3.0   # alert if p95 > baseline × this
@@ -66,9 +66,7 @@ def check_topics(host: str, user: str, key: str) -> list[str]:
     try:
         rc, out = ssh(
             host, user, key,
-            "docker exec robops-ros2stack bash -c '. /opt/ros/jazzy/setup.sh && "
-            "timeout 10 ros2 topic list 2>&1' || "
-            "docker exec robops-inference bash -c '. /opt/ros/jazzy/setup.sh && "
+            "docker exec robops-stack bash -c '. /opt/ros/jazzy/setup.sh && "
             "timeout 10 ros2 topic list 2>&1'",
             timeout=25,
         )
@@ -114,7 +112,7 @@ def check_latency(host: str, user: str, key: str, baseline_ms: float) -> bool:
     limit_ms = baseline_ms * LATENCY_MULTIPLIER
     rc, out = ssh(
         host, user, key,
-        "docker logs --tail 50 robops-inference 2>&1 | grep 'latency_ms' | tail -10",
+        "docker logs --tail 50 robops-stack 2>&1 | grep 'latency_ms' | tail -10",
     )
     if rc != 0 or not out.strip():
         print(f"  [WARN] No latency logs found — skipping latency check")
