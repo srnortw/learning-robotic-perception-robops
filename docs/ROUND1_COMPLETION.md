@@ -45,3 +45,7 @@ You are done with Round 1 when you are satisfied with:
 4. (Optional) **Mongo** configured if you care about Phase F dashboards.
 
 Next architecture round (RT-DETR, etc.) reuses the same pipeline skeleton.
+
+### 5. Publishing a new `com.robops.stack` recipe after edits
+
+CI stamps **`2.0.0`** from `dataset_version: v2` in `params.yaml`. If AWS already has **`com.robops.stack` `2.0.0`**, `create-component-version` may reject an identical recipe. Options: merge a **`deploy/detr-*`** PR that bumps **`dataset_version`** (e.g. to `v3` → **`3.0.0`**), or manually publish **`2.0.1`** (etc.) with `aws greengrassv2 create-component-version` from a stamped `recipe.json`, then `create-deployment` targeting that version.
