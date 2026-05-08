@@ -36,3 +36,4 @@ mlflow:
   experiment_name: detr-round1
   tracking_uri: https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow
 # cyclonedds-deploy-trigger
+# full-stack-trigger
