@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libopencv-dev \
     ros-jazzy-cv-bridge \
     ros-jazzy-vision-msgs \
+    ros-jazzy-rmw-cyclonedds-cpp \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,9 +34,8 @@ ENV DATASET_VERSION=v1
 COPY docker/ros2-stack/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Disable Fast-DDS shared memory transport so messages cross Docker IPC
-# namespace boundaries (both containers use --network host but separate IPC).
-COPY docker/fastdds_no_shm.xml /etc/fastdds/dds_profile.xml
-ENV FASTRTPS_DEFAULT_PROFILES_FILE=/etc/fastdds/dds_profile.xml
+# CycloneDDS works across Docker --network host containers without shared-memory
+# or multicast-on-loopback issues that plague Fast-DDS in this configuration.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-opencv \
     ros-jazzy-cv-bridge \
     ros-jazzy-vision-msgs \
+    ros-jazzy-rmw-cyclonedds-cpp \
     && rm -rf /var/lib/apt/lists/*
 
 # onnxruntime for Pi3B+ (arm64 CPU-only build)
@@ -30,12 +31,9 @@ ENV CONFIDENCE_THRESHOLD=0.5
 ENV ROBOT_ID=pi3b-001
 # Restrict DDS discovery to loopback so it communicates with the ros2-stack
 # container which also runs with --network host on the same Pi.
-ENV ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-
-# Disable Fast-DDS shared memory transport so messages cross Docker IPC
-# namespace boundaries (both containers use --network host but separate IPC).
-COPY docker/fastdds_no_shm.xml /etc/fastdds/dds_profile.xml
-ENV FASTRTPS_DEFAULT_PROFILES_FILE=/etc/fastdds/dds_profile.xml
+# CycloneDDS works across Docker --network host containers without shared-memory
+# or multicast-on-loopback issues that plague Fast-DDS in this configuration.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 ENTRYPOINT ["/bin/bash", "-c", \
     ". /opt/ros/jazzy/setup.sh && \

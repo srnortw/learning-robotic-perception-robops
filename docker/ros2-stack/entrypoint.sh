@@ -4,10 +4,6 @@ set -e
 . /opt/ros/jazzy/setup.sh
 . /ros2_ws/install/setup.sh
 
-# Restrict DDS discovery to loopback so both --network host containers
-# (ros2-stack and inference) communicate only via 127.0.0.1.
-export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-
 cleanup() {
     echo "[entrypoint] Shutting down nodes..."
     kill "$CAMERA_PID" "$MONITOR_PID" 2>/dev/null || true

@@ -28,7 +28,7 @@
       },
       "Lifecycle": {
         "Run": {
-          "Script": "docker run --rm --name robops-ros2stack --network host -e ROBOT_ID={configuration:/robotId} -e DATASET_VERSION=PLACEHOLDER_DATASET_VERSION -e MONGO_URI={secrets:robops/mongo_uri} -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack:PLACEHOLDER_DATASET_VERSION"
+          "Script": "docker run --rm --name robops-ros2stack --network host -e ROBOT_ID={configuration:/robotId} -e DATASET_VERSION=PLACEHOLDER_DATASET_VERSION -e MONGO_URI={secrets:robops/mongo_uri} -e RMW_IMPLEMENTATION=rmw_cyclonedds_cpp 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack:PLACEHOLDER_DATASET_VERSION"
         },
         "Shutdown": {
           "Script": "docker stop robops-ros2stack || true"

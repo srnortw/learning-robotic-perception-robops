@@ -38,7 +38,7 @@
       ],
       "Lifecycle": {
         "Run": {
-          "Script": "docker run --rm --name robops-inference --network host -e MODEL_PATH={artifacts:path}/model_int8.onnx -v {artifacts:path}:{artifacts:path} -e SHADOW_MODE=false -e CONFIDENCE_THRESHOLD=0.5 -e ROBOT_ID={configuration:/robotId} -e MONGO_URI={secrets:robops/mongo_uri} -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/inference:PLACEHOLDER_DATASET_VERSION"
+          "Script": "docker run --rm --name robops-inference --network host -e MODEL_PATH={artifacts:path}/model_int8.onnx -v {artifacts:path}:{artifacts:path} -e SHADOW_MODE=false -e CONFIDENCE_THRESHOLD=0.5 -e ROBOT_ID={configuration:/robotId} -e MONGO_URI={secrets:robops/mongo_uri} -e RMW_IMPLEMENTATION=rmw_cyclonedds_cpp 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/inference:PLACEHOLDER_DATASET_VERSION"
         },
         "Shutdown": {
           "Script": "docker stop robops-inference || true"
