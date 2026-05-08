@@ -434,13 +434,7 @@ jobs:
         run: |
           aws greengrassv2 create-component-version \
             --inline-recipe fileb://greengrass/components/full-stack-component/recipe.json \
-            --region ${{ env.GREENGRASS_REGION }} || echo "Version may already exist — deleting and recreating"
-          aws greengrassv2 delete-component \
-            --arn "arn:aws:greengrass:${{ env.GREENGRASS_REGION }}:${{ env.ACCOUNT_ID }}:components:com.robops.stack:versions:${{ steps.params.outputs.component_version }}" \
-            --region ${{ env.GREENGRASS_REGION }} 2>/dev/null || true
-          aws greengrassv2 create-component-version \
-            --inline-recipe fileb://greengrass/components/full-stack-component/recipe.json \
-            --region ${{ env.GREENGRASS_REGION }}
+            --region ${{ env.GREENGRASS_REGION }} || echo "Note: component version may already exist (recipe unchanged)"
 
       - name: Deploy to canary group
         run: |
