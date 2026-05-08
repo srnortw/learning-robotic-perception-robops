@@ -59,11 +59,18 @@ class MonitoringNode(Node):
     # ── MongoDB ──────────────────────────────────────────────────────────────
 
     def _connect_mongo(self):
-        if not MONGO_AVAILABLE or not MONGO_URI:
+        if not MONGO_AVAILABLE or not MONGO_URI.strip():
             self.get_logger().warn("MONGO_URI not set — metrics will not be persisted.")
             return None
+        uri = MONGO_URI.strip()
+        if not uri.startswith(("mongodb://", "mongodb+srv://")):
+            self.get_logger().warn(
+                "MONGO_URI is not a valid MongoDB URI (e.g. Greengrass secret not "
+                "resolved) — metrics will not be persisted."
+            )
+            return None
         try:
-            client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            client = MongoClient(uri, serverSelectionTimeoutMS=5000)
             client.server_info()
             return client[DB_NAME][COLLECTION]
         except Exception as e:

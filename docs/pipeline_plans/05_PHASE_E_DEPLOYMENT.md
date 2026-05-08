@@ -5,6 +5,8 @@
 **Receives from:** Phase D (Production-tagged model in MLflow, `model_int8.onnx` in S3)
 **Feeds into:** Phase F (running inference on Pi, monitoring loop)
 
+> **Round 1 update (Pi 3B+):** Edge deploy uses a **single** Greengrass component **`com.robops.stack`** and image **`robops/ros2-full-stack`** (`robops-stack` container): camera + DETR + monitoring in one process group. Legacy split **`inference` + `ros2-stack`** images are optional. See [ROUND1_COMPLETION](../ROUND1_COMPLETION.md).
+
 ---
 
 ## Full Deployment Flow
