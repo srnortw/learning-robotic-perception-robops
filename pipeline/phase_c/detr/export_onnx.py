@@ -136,7 +136,7 @@ def export_to_onnx(weights_path: str, onnx_dir: str, num_classes: int):
             "logits": {0: "batch"},
             "pred_boxes": {0: "batch"},
         },
-        opset_version=16,
+        opset_version=17,
         do_constant_folding=True,
     )
     print(f"ONNX export complete → {onnx_path}")
@@ -184,10 +184,33 @@ def upload_to_s3(local_path: str, dataset_version: str, filename: str) -> str:
     return s3_url
 
 
+def _resolve_run_id(run_id: str, experiment_name: str) -> str:
+    """If run_id is 'latest', fetch the most recent finished run from MLflow."""
+    if run_id != "latest":
+        return run_id
+    exp = mlflow.get_experiment_by_name(experiment_name)
+    if exp is None:
+        raise ValueError(f"MLflow experiment '{experiment_name}' not found. Run Colab training first.")
+    runs = mlflow.search_runs(
+        experiment_ids=[exp.experiment_id],
+        filter_string="status = 'FINISHED'",
+        order_by=["start_time DESC"],
+        max_results=1,
+    )
+    if runs.empty:
+        raise ValueError("No finished MLflow runs found. Run Colab training first.")
+    resolved = runs.iloc[0]["run_id"]
+    print(f"Resolved --run-id latest → {resolved}")
+    return resolved
+
+
 def log_to_mlflow(run_id: str, int8_path: str, s3_url: str, dataset_version: str):
     os.environ.setdefault("MLFLOW_TRACKING_USERNAME", os.environ.get("DAGSHUB_USERNAME", ""))
     os.environ.setdefault("MLFLOW_TRACKING_PASSWORD", os.environ.get("DAGSHUB_TOKEN", ""))
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+    params = load_params()
+    run_id = _resolve_run_id(run_id, params["mlflow"]["experiment_name"])
 
     with mlflow.start_run(run_id=run_id):
         mlflow.log_artifact(int8_path, artifact_path="onnx")
