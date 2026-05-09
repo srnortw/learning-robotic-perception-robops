@@ -53,7 +53,7 @@ class MonitoringNode(Node):
 
         self.get_logger().info(
             f"monitoring_node started | robot={ROBOT_ID} | "
-            f"mongo={'connected' if self._mongo_col else 'DISABLED'}"
+            f"mongo={'connected' if self._mongo_col is not None else 'DISABLED'}"
         )
 
     # ── MongoDB ──────────────────────────────────────────────────────────────
