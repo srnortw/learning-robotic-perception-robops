@@ -12,9 +12,22 @@
       "person": 0.835,
       "vest": 0.6428
     },
-    "latency_p95_ms": 2201.0351170499803
+    "latency_p95_ms": 2173.6259375499926
   },
-  "champion": null,
+  "champion": {
+    "version": "3",
+    "run_id": "15548dfdffdd4098bed0fad2510d2da6",
+    "map50": 0.0,
+    "map50_95": 0.0,
+    "latency_p95_ms": 0.0,
+    "per_class_ap50": {
+      "person": 0.835,
+      "helmet": 0.6154,
+      "vest": 0.6428,
+      "no-helmet": 0.2682,
+      "no-vest": 0.0
+    }
+  },
   "delta_map50": 0.4723041772206865,
   "critical_regressions": [],
   "auto_approved": true,
