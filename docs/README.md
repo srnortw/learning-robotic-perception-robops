@@ -39,6 +39,8 @@ Phase B → Phase C → Phase D  (+ optional Phase F)
 - [06_PHASE_F_MONITORING](pipeline_plans/06_PHASE_F_MONITORING.md) — drift + retrain (no Pi nodes in repo)
 - [ROUND1_COMPLETION](ROUND1_COMPLETION.md) — MLOps “done” checklist
 - [OPTIONAL_AWS_CLEANUP](OPTIONAL_AWS_CLEANUP.md) — remove unused ECR / IoT resources after dropping edge
+- [SESSION_DONE_2026-05-15](SESSION_DONE_2026-05-15.md) — last session: MLOps cleanup, branches, ECR, CI dispatch
+- [NEXT_STEPS](NEXT_STEPS.md) — checklist to continue tomorrow
 - [DATASETS](DATASETS.md)
 ---
 
