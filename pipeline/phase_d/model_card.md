@@ -7,17 +7,17 @@
 | Architecture | Conditional DETR ResNet-50 |
 | HuggingFace ID | microsoft/conditional-detr-resnet-50 |
 | Export format | ONNX INT8 (dynamic quantization) |
-| Target hardware | CPU (ONNX Runtime INT8); edge not in this repo |
+| Target hardware | CPU (ONNX Runtime INT8); edge device not defined in this repo |
 | MLflow run | [15548dfd](https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow/#/experiments/0/runs/15548dfdffdd4098bed0fad2510d2da6) |
 | S3 weights | `s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/weights/detr/v2/model_int8.onnx` |
 | Dataset version | v2 |
-| Training date | 2026-05-08 |
+| Training date | 2026-05-15 |
 
 ## Training Data
 
 | Field | Value |
 |---|---|
-| Classes | person, chair, table, door |
+| Classes | See `label_schema.yaml` (synced into training / export) |
 | Format | COCO JSON → MDS shards (S3) |
 | MDS path | `s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/mds/detr/v2/` |
 | Train split | 85% |
@@ -30,7 +30,7 @@
 |---|---|
 | mAP@50 | `0.4723` |
 | mAP@50:95 | `0.2292` |
-| Latency p95 | `2201` ms (CPU, ONNX INT8) |
+| Latency p95 | `2174` ms (CPU, ONNX INT8) |
 | Holdout size | 90 images |
 
 ### Per-class AP@50
@@ -45,7 +45,11 @@
 
 ## Comparison vs Champion
 
-This is Round 1 — no prior champion exists. Model is the first to be considered for Production.
+| Metric | Champion (v3) | Challenger | Delta |
+|---|---|---|---|
+| mAP@50 | `0.0000` | `0.4723` | `+0.4723` |
+| mAP@50:95 | `0.0000` | `0.2292` | — |
+| Latency p95 | `0 ms` | `2174 ms` | — |
 
 ## Known Failure Modes
 
@@ -56,14 +60,14 @@ This is Round 1 — no prior champion exists. Model is the first to be considere
 
 ## Approved Use Cases
 
-- Shadow mode logging on indoor wheeled robot
-- **Not approved** for actuation or safety-critical decisions (shadow mode only)
+- Offline evaluation and batch inference on workstation or future edge stack (out of repo)
+- **Not approved** for safety-critical or actuation decisions without a separate safety review
 
 ## Approval
 
 | Field | Value |
 |---|---|
 | Reviewer | srnortw |
-| Approval date | 2026-05-08 |
-| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/25) |
+| Approval date | 2026-05-15 |
+| GitHub PR | [PR](https://github.com/srnortw/learning-robotic-perception-robops/pull/26) |
 | MLflow Registry | `detr-conditional-resnet50` v3 |
