@@ -1,10 +1,13 @@
+# Reference inference parameters (class names synced from label_schema.yaml via
+# `python pipeline/utils/schema.py --sync`). This repo is MLOps-only — no ROS2
+# runtime; keep in sync with training/export scripts.
 detr_node:
   ros__parameters:
     model_path: /models/detr/model.onnx
     shadow_mode: true
     confidence_threshold: 0.6
     upload_every_nth_frame: 30
-    robot_id: pi3b-001
+    robot_id: edge-placeholder
     architecture: detr
     class_names:
     - person

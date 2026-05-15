@@ -7,7 +7,7 @@
 | Architecture | Conditional DETR ResNet-50 |
 | HuggingFace ID | microsoft/conditional-detr-resnet-50 |
 | Export format | ONNX INT8 (dynamic quantization) |
-| Target hardware | Raspberry Pi 3B+ (arm64 CPU) |
+| Target hardware | CPU (ONNX Runtime INT8); edge device not defined in this repo |
 | MLflow run | [{run_id_short}]({mlflow_run_url}) |
 | S3 weights | `{s3_onnx_path}` |
 | Dataset version | {dataset_version} |
@@ -17,7 +17,7 @@
 
 | Field | Value |
 |---|---|
-| Classes | person, chair, table, door |
+| Classes | See `label_schema.yaml` (synced into training / export) |
 | Format | COCO JSON → MDS shards (S3) |
 | MDS path | `{mds_path}` |
 | Train split | 85% |
@@ -50,8 +50,8 @@
 
 ## Approved Use Cases
 
-- Shadow mode logging on indoor wheeled robot
-- **Not approved** for actuation or safety-critical decisions (shadow mode only)
+- Offline evaluation and batch inference on workstation or future edge stack (out of repo)
+- **Not approved** for safety-critical or actuation decisions without a separate safety review
 
 ## Approval
 

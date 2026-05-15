@@ -5,7 +5,7 @@
 FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 LABEL maintainer="robops"
-LABEL description="RoboOps DETR training and ONNX export environment"
+LABEL description="DETR MLOps training and ONNX export environment (amd64)"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1

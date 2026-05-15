@@ -4,7 +4,7 @@ Phase F — Retraining Trigger
 Called automatically by drift_detector.py when drift is confirmed.
 1. Flags high-drift frames in MongoDB (retrain_priority: true)
 2. Inserts a retrain_queue document
-3. Fires GitHub Actions workflow_dispatch to kick off Phase A→B→C
+3. Fires GitHub Actions workflow_dispatch to kick off Phase B→C
 4. Sends Discord alert
 
 Usage:
@@ -81,7 +81,7 @@ def push_retrain_queue(db, report: dict):
 
 
 def dispatch_github_actions(report: dict) -> str | None:
-    """Fire workflow_dispatch on ci_deploy.yml to start Phase A→C retrain."""
+    """Fire workflow_dispatch on ci_deploy.yml to start export + train image (retrain hook)."""
     if not GH_TOKEN:
         print("WARNING: GITHUB_TOKEN not set — skipping workflow dispatch.")
         return None
@@ -97,7 +97,7 @@ def dispatch_github_actions(report: dict) -> str | None:
     payload = {
         "ref": "main",
         "inputs": {
-            "model_run_id": "",
+            "model_run_id": "latest",
             "dataset_version": current_dataset_version(),
             "retrain": "true",
         }
@@ -134,7 +134,7 @@ def send_discord_alert(report: dict, run_url: str | None):
     lat_emoji  = "⚠" if lat_ratio > 1.5 else "✓"
 
     lines = [
-        f"**[Phase F Alert]** DETR drift detected on `robops-pi3b-001`",
+        f"**[Phase F Alert]** DETR drift detected (production_metrics)",
         f"",
         f"{conf_emoji} Confidence drop: `{conf_drop:+.3f}` (threshold -0.10)",
         f"{psi_emoji} Class freq PSI:  `{psi:.3f}` (threshold 0.20)",

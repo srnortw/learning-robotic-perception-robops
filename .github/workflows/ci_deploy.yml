@@ -1,10 +1,10 @@
-name: CI — ONNX Export, Quantize, Push to ECR
+name: CI — DETR MLOps (export, train image, eval, model card)
 
 # Triggers:
 #   1. params.yaml change pushed to main → quantize + package
 #   2. Manual dispatch with mlflow run_id (after Colab training)
 #   3. Phase F retrain trigger (workflow_dispatch with retrain: true)
-#   4. PR merge on deploy/detr-* branch → generate model card + promote to Production
+#   4. PR merge on deploy/detr-* branch → generate model card (no edge deploy)
 
 on:
   push:
@@ -36,18 +36,10 @@ env:
   AWS_REGION: eu-central-1
   ECR_REGISTRY: 688567275774.dkr.ecr.eu-central-1.amazonaws.com
   ECR_REPO_TRAINING: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/training
-  ECR_REPO_INFERENCE: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/inference
-  ECR_REPO_ROS2STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-stack
-  ECR_REPO_FULL_STACK: 688567275774.dkr.ecr.eu-central-1.amazonaws.com/robops/ros2-full-stack
   S3_BUCKET: my-perception-robops-data-2026-688567275774-eu-central-1-an
   ACCOUNT_ID: "688567275774"
-  GREENGRASS_REGION: eu-central-1
-  CANARY_GROUP_ARN: arn:aws:iot:eu-central-1:688567275774:thinggroup/group-canary
-  PI_USER: serkanrob
-  GG_THING_NAME: robops-pi3b-001
 
 jobs:
-  # ── Job 1: ONNX Export + INT8 Quantization ─────────────────────────────
   export-and-quantize:
     name: Export ONNX + INT8 Quantize
     runs-on: ubuntu-latest
@@ -101,7 +93,6 @@ jobs:
           aws s3 ls s3://${{ env.S3_BUCKET }}/weights/detr/$VERSION/model_int8.onnx
           echo "INT8 model confirmed in S3"
 
-  # ── Job 2: Build + Push Training Docker Image ───────────────────────────
   build-training-image:
     name: Build Training Docker Image → ECR
     runs-on: ubuntu-latest
@@ -145,13 +136,10 @@ jobs:
           docker push $IMAGE_LATEST
           echo "Pushed: $IMAGE_TAG"
 
-  # ── Job 3: Phase D — Evaluate + Open Approval PR ────────────────────────
   evaluate-and-open-pr:
     name: Phase D — Evaluate + Open Approval PR
     runs-on: ubuntu-latest
     needs: export-and-quantize
-    # Only run when a real MLflow run ID is provided (workflow_dispatch).
-    # Push triggers on params.yaml changes do not have a run ID to evaluate.
     if: ${{ inputs.model_run_id != '' && inputs.model_run_id != null }}
     permissions:
       contents: write
@@ -225,7 +213,6 @@ jobs:
           python pipeline/phase_d/notify_audit.py \
             --results pipeline/phase_d/eval_results.json
 
-  # ── Job 4: Generate Model Card + Promote to Production (on PR merge) ────
   generate-model-card:
     name: Phase D — Generate Model Card + Promote to Production
     runs-on: ubuntu-latest
@@ -237,8 +224,6 @@ jobs:
       contents: write
 
     steps:
-      # pull_request-event default checkout is refs/pull/N/merge not main.
-      # Committing there then pushing main rejects as non-fast-forward.
       - name: Checkout main (post-merge tip)
         uses: actions/checkout@v4
         with:
@@ -287,9 +272,8 @@ jobs:
           git pull --rebase origin main
           git push origin main
 
-  # ── Job 5: Notify completion ─────────────────────────────────────────────
   notify:
-    name: Notify Phase D
+    name: Notify Phase C–D
     runs-on: ubuntu-latest
     needs: [export-and-quantize, build-training-image, evaluate-and-open-pr, generate-model-card]
     if: always()
@@ -314,214 +298,12 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           DAGSHUB_URL="https://dagshub.com/srnortw/learning-robotic-perception-robops/experiments"
 
-          MESSAGE="**[RoboOps Phase C→D]** ONNX export \`${STATUS}\` | Dataset: \`${VERSION}\`\n"
+          MESSAGE="**[DETR MLOps]** ONNX export \`${STATUS}\` | Dataset: \`${VERSION}\`\n"
           MESSAGE+="INT8 model → \`s3://${{ env.S3_BUCKET }}/weights/detr/${VERSION}/model_int8.onnx\`\n"
+          MESSAGE+="Training image → \`${{ env.ECR_REPO_TRAINING }}:${VERSION}\`\n"
           MESSAGE+="MLflow: ${DAGSHUB_URL} | Actions: ${RUN_URL}\n"
-          MESSAGE+="**→ Approval PR opened — Phase D human audit ready**"
+          MESSAGE+="**→ Approval PR / model card path — no edge deploy in this repo**"
 
           curl -s -X POST "$DISCORD_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{\"content\": \"$MESSAGE\"}"
-
-  # ── Job 6: Build arm64 combined full-stack image → ECR ──────────────────
-  # Combines camera_node + detr_node + monitoring_node into one container to
-  # avoid cross-container DDS issues and halve memory overhead on Pi 3B+.
-  build-full-stack-image:
-    name: Phase E — Build full-stack image (arm64)
-    runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU (arm64 emulation)
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
-            | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-
-      - name: Create ECR repo if missing
-        run: |
-          aws ecr describe-repositories --repository-names robops/ros2-full-stack \
-            --region ${{ env.AWS_REGION }} 2>/dev/null || \
-          aws ecr create-repository --repository-name robops/ros2-full-stack \
-            --region ${{ env.AWS_REGION }}
-
-      - name: Extract dataset version
-        id: params
-        run: |
-          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
-          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and push full-stack image (arm64)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/ros2-full-stack/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.ECR_REPO_FULL_STACK }}:${{ steps.params.outputs.dataset_version }}
-            ${{ env.ECR_REPO_FULL_STACK }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ── Job 8: Greengrass canary deployment ─────────────────────────────────
-  deploy-canary:
-    name: Phase E — Deploy to canary Pi (Greengrass)
-    runs-on: self-hosted
-    needs: [build-full-stack-image]
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install deploy dependencies
-        run: pip install boto3 pyyaml
-
-      - name: Extract dataset version
-        id: params
-        run: |
-          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
-          NUM=${VERSION#v}
-          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
-          echo "component_version=${NUM}.0.0" >> $GITHUB_OUTPUT
-
-      - name: Stamp component version into recipe
-        run: |
-          VERSION=${{ steps.params.outputs.dataset_version }}
-          SEMVER=${{ steps.params.outputs.component_version }}
-          sed -i "s/PLACEHOLDER_VERSION/${SEMVER}/g" \
-            greengrass/components/full-stack-component/recipe.json
-          sed -i "s/PLACEHOLDER_DATASET_VERSION/${VERSION}/g" \
-            greengrass/components/full-stack-component/recipe.json
-
-      - name: Create Greengrass component version
-        run: |
-          aws greengrassv2 create-component-version \
-            --inline-recipe fileb://greengrass/components/full-stack-component/recipe.json \
-            --region ${{ env.GREENGRASS_REGION }} || echo "Note: component version may already exist (recipe unchanged)"
-
-      - name: Deploy to canary group
-        run: |
-          SEMVER=${{ steps.params.outputs.component_version }}
-          aws greengrassv2 create-deployment \
-            --target-arn "${{ env.CANARY_GROUP_ARN }}" \
-            --deployment-name "robops-canary-detr-${{ steps.params.outputs.dataset_version }}" \
-            --components "{
-              \"com.robops.stack\": {\"componentVersion\": \"${SEMVER}\"},
-              \"aws.greengrass.DockerApplicationManager\": {\"componentVersion\": \"2.0.16\"},
-              \"aws.greengrass.TokenExchangeService\": {\"componentVersion\": \"2.0.3\"}
-            }" \
-            --deployment-policies '{
-              "failureHandlingPolicy": "ROLLBACK",
-              "componentUpdatePolicy": {
-                "action": "NOTIFY_COMPONENTS",
-                "timeoutInSeconds": 60
-              }
-            }' \
-            --region ${{ env.GREENGRASS_REGION }}
-          echo "Canary deployment triggered → group-canary (${{ env.GG_THING_NAME }})"
-
-      - name: Post-deploy health check
-        run: |
-          python pipeline/phase_e/health_check.py \
-            --host ${{ secrets.PI_HOST }} \
-            --user ${{ env.PI_USER }} \
-            --key ~/.ssh/robops_pi \
-            --timeout-minutes 25
-
-      - name: Send Discord — canary deployed
-        if: ${{ env.DISCORD_WEBHOOK_URL != '' }}
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          VERSION=${{ steps.params.outputs.dataset_version }}
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          MESSAGE="**[RoboOps Phase E]** Canary deployed DETR \`${VERSION}\` → \`${{ env.GG_THING_NAME }}\` ✓\n"
-          MESSAGE+="Full-stack image: \`${{ env.ECR_REPO_FULL_STACK }}:${VERSION}\`\n"
-          MESSAGE+="Phase F monitoring starting — fleet promotion after canary window.\n"
-          MESSAGE+="Actions: ${RUN_URL}"
-          curl -s -X POST "$DISCORD_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": \"$MESSAGE\"}"
-
-  # ── Job 9: Phase F — Canary Monitor + Fleet Promotion ────────────────────
-  canary-monitor:
-    name: Phase F — Canary Monitor (4h) + Fleet Promotion
-    runs-on: self-hosted   # long-running job on workstation runner
-    needs: deploy-canary
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'deploy/detr-')
-    timeout-minutes: 15    # 6 min monitor + buffer (bump to 300 for production)
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: pip install pymongo boto3 pyyaml requests
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.GREENGRASS_REGION }}
-
-      - name: Extract dataset version
-        id: params
-        run: |
-          VERSION=$(python3 -c "import yaml; p=yaml.safe_load(open('pipeline/phase_c/detr/params.yaml')); print(p['dataset']['dataset_version'])")
-          echo "dataset_version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Run canary monitor (4h) + auto-promote to fleet on pass
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          python pipeline/phase_f/canary_monitor.py \
-            --dataset-version ${{ steps.params.outputs.dataset_version }} \
-            --hours 0.1 \
-            --poll-minutes 2

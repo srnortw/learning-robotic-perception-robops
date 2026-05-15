@@ -7,7 +7,7 @@
 | Architecture | Conditional DETR ResNet-50 |
 | HuggingFace ID | microsoft/conditional-detr-resnet-50 |
 | Export format | ONNX INT8 (dynamic quantization) |
-| Target hardware | Raspberry Pi 3B+ (arm64 CPU) |
+| Target hardware | CPU (ONNX Runtime INT8); edge not in this repo |
 | MLflow run | [15548dfd](https://dagshub.com/srnortw/learning-robotic-perception-robops.mlflow/#/experiments/0/runs/15548dfdffdd4098bed0fad2510d2da6) |
 | S3 weights | `s3://my-perception-robops-data-2026-688567275774-eu-central-1-an/weights/detr/v2/model_int8.onnx` |
 | Dataset version | v2 |

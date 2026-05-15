@@ -268,7 +268,7 @@ After quantization, upload `model_int8.onnx` to S3:
 s3://your-bucket/weights/detr/v{N}/model_int8.onnx
 ```
 
-This S3 path is what the Greengrass component recipe references in Phase E.
+This S3 path is the canonical artifact for downstream inference (separate edge project, batch jobs, etc.).
 
 ---
 
@@ -348,7 +348,7 @@ docker/training/
 └── Dockerfile                 # amd64, PyTorch + HuggingFace + MLflow + mosaicml-streaming
 
 .github/workflows/
-└── ci_deploy.yml              # triggered after training: quantize → build → ECR → Greengrass
+└── ci_deploy.yml              # ONNX export + INT8 → S3; training image → ECR (amd64)
 ```
 
 ---

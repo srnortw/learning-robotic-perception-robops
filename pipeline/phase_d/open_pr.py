@@ -42,7 +42,7 @@ def main():
         if regs else "OK No critical class regressions"
     )
 
-    title = f"Deploy DETR {dv} — mAP@50 {map50:.3f} (delta {delta:+.3f})"
+    title = f"Promote DETR {dv} — mAP@50 {map50:.3f} (delta {delta:+.3f})"
     body = (
         f"## DETR Model Audit - {dv}\n\n"
         f"| Metric | Value |\n"
@@ -62,7 +62,7 @@ def main():
         f"/#/experiments/0/runs/{run_id}\n\n"
         f"### Action Required\n"
         f"1. Run `python pipeline/phase_d/fiftyone_audit.py` locally\n"
-        f"2. **Merge this PR** to deploy to Production (Phase E)\n"
+        f"2. **Merge this PR** to record the audit on `main` and generate the model card (MLOps Round 1 gate)\n"
         f"3. **Close PR** to keep champion unchanged\n"
     )
 

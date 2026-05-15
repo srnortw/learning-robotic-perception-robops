@@ -1,8 +1,8 @@
 """
 Single source of truth for class definitions.
 
-All pipeline scripts, training code, and ROS2 node configs derive their
-class names and num_classes from pipeline/phase_b/label_schema.yaml.
+All pipeline scripts and training code derive class names and num_classes
+from pipeline/phase_b/label_schema.yaml.
 
 To add or change classes:
     1. Edit pipeline/phase_b/label_schema.yaml
@@ -26,7 +26,7 @@ import yaml
 REPO_ROOT   = Path(__file__).parents[2]
 SCHEMA_PATH = REPO_ROOT / "pipeline" / "phase_b" / "label_schema.yaml"
 PARAMS_PATH = REPO_ROOT / "pipeline" / "phase_c" / "detr" / "params.yaml"
-DETR_PARAMS = REPO_ROOT / "ros2_ws" / "src" / "detr_node" / "config" / "detr_params.yaml"
+DETR_PARAMS = REPO_ROOT / "pipeline" / "phase_c" / "detr" / "detr_params.yaml"
 
 
 class Schema:
@@ -82,7 +82,7 @@ class Schema:
             changed = f"{old_n} → {n}" if old_n != n else f"{n} (unchanged)"
             print(f"[schema.sync] params.yaml          num_classes={changed}")
 
-        # ── Update ros2_ws/.../detr_params.yaml ──────────────────────────────
+        # ── Update pipeline/phase_c/detr/detr_params.yaml ───────────────────
         with open(DETR_PARAMS) as f:
             rp = yaml.safe_load(f)
 

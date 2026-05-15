@@ -133,7 +133,7 @@ def update_params_yaml(version: str):
     Schema.sync()
 
     print(f"[convert_to_mds] Now run:")
-    print(f"    git add pipeline/phase_c/detr/params.yaml ros2_ws/src/detr_node/config/detr_params.yaml")
+    print(f"    git add pipeline/phase_c/detr/params.yaml pipeline/phase_c/detr/detr_params.yaml")
     print(f"    git commit -m 'data: bump mds_path to detr {version} — triggers training CI'")
     print(f"    git push")
 

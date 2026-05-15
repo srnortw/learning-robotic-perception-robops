@@ -6,7 +6,7 @@
 - Phase C: challenger model in MLflow Staging + `.pt` weights in S3
 - Phase B: versioned `holdout.dvc` pointer (pull images to workstation before eval)
 
-**Feeds into:** Phase E (Production-tagged model in MLflow, `model_int8.onnx` in S3 approved for Greengrass deployment)
+**Feeds into:** MLflow Production stage + `model_int8.onnx` on S3 (consumers outside this repo, if any)
 
 ---
 
@@ -175,7 +175,7 @@ Human reviewer looks at worst-performing frames side by side. Key question: **"A
 Two options (use whichever fits your workflow):
 
 **Option A — GitHub PR merge (recommended for traceability)**
-- GitHub Actions creates a PR titled `"Deploy DETR v{N} — mAP delta +0.04"`
+- GitHub Actions creates a PR titled `"Promote DETR v{N} — mAP delta +0.04"`
 - PR description contains the full metric comparison
 - Merging the PR triggers the next GitHub Actions step (Phase E packaging)
 - PR merge = audit log of who approved and when

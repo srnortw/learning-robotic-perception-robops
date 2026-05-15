@@ -1,51 +1,21 @@
-# Round 1 (DETR) — Completion Checklist
+# Round 1 (DETR) — MLOps completion checklist
 
-Use this when you want to call the **A→F loop “done”** for personal RoboOps Round 1.
+This repo ends at **data → train → export → eval → model card** (plus optional **Phase F** drift checks against MongoDB if you still ingest production metrics from somewhere else).
 
-## Already in place
+## Definition of done
 
-- **Training / eval:** Phase C + D, holdout mAP, `label_schema.yaml` as class source of truth.
-- **Edge image:** Single **`robops/ros2-full-stack`** container (`robops-stack`): `camera_node` + `detr_node` + `monitoring_node`, **CycloneDDS**, `--network host`.
-- **Camera path:** Host **`robops-camera-bridge`** (picamera2) → UDP JPEG → `camera_node` in Docker (avoids Pi OS vs Ubuntu Docker camera stack conflicts).
-- **CI/CD:** `ci_deploy.yml` builds full-stack arm64, publishes Greengrass **`com.robops.stack`**, Phase E health check, Phase F canary window.
+1. **`label_schema.yaml`** — five classes: `person`, `helmet`, `vest`, `no-helmet`, `no-vest`.
+2. **Phase B** — MDS shards in S3; `params.yaml` `mds_path` matches.
+3. **Phase C** — Colab (or workstation) training logged to DagsHub MLflow; weights in `s3://…/weights/detr/<v>/model.pt`.
+4. **CI** — `workflow_dispatch` with MLflow run ID runs `export_onnx.py`, uploads `model_int8.onnx`, pushes **training** image to ECR.
+5. **Phase D** — `eval_champion_challenger.py` on holdout; approval PR; merge generates `model_card.md`.
 
-## One-time / optional follow-ups
+## Optional Phase F
 
-### 1. Pi 3B+ resources (expect this)
+- `drift_check.yml` + `drift_detector.py` expect documents in MongoDB `production_metrics`. Without an edge fleet, that collection may be empty; the job can still run but will report no recent data.
 
-- **1 GB RAM + swap:** Keep **one** stack running; avoid parallel `docker pull` while the stack runs.
-- **SD card:** Keep **≥1–2 GB** free on `/` before pulls/upgrades (`df -h /`). Prune unused images when tight.
+## Secrets (GitHub)
 
-### 2. MongoDB on the device (optional)
+Typical: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DAGSHUB_USERNAME`, `DAGSHUB_TOKEN`, `MONGO_URI` (for drift), `DISCORD_WEBHOOK_URL`, `GITHUB_TOKEN` for PRs.
 
-Telemetry is **off** until `MONGO_URI` is a real URI inside the container.
-
-- The **`com.robops.stack`** recipe uses **component configuration** `mongoUri` (default empty).
-- In **AWS IoT Core → Greengrass → Components →** your deployment / thing group, set **`com.robops.stack`** configuration merge, e.g.:
-
-  ```json
-  {
-    "mongoUri": "mongodb+srv://USER:PASS@cluster.mongodb.net/robops?retryWrites=true&w=majority"
-  }
-  ```
-
-  Prefer **AWS Secrets Manager + Greengrass secret reference** for production instead of pasting the URI in the console.
-
-### 3. CSI camera reliability
-
-If `libcamera` reports **camera frontend timeout**, treat it as **hardware first** (ribbon, connector, module). The bridge and ROS stack can be correct while the sensor path is flaky.
-
-### 4. Declare “done”
-
-You are done with Round 1 when you are satisfied with:
-
-1. One **full-stack** container running on the canary Pi.  
-2. **Correct five classes** on `detr_node`.  
-3. **Camera bridge + stack** verified when hardware is stable.  
-4. (Optional) **Mongo** configured if you care about Phase F dashboards.
-
-Next architecture round (RT-DETR, etc.) reuses the same pipeline skeleton.
-
-### 5. Publishing a new `com.robops.stack` recipe after edits
-
-CI stamps **`2.0.0`** from `dataset_version: v2` in `params.yaml`. If AWS already has **`com.robops.stack` `2.0.0`**, `create-component-version` may reject an identical recipe. Options: merge a **`deploy/detr-*`** PR that bumps **`dataset_version`** (e.g. to `v3` → **`3.0.0`**), or manually publish **`2.0.1`** (etc.) with `aws greengrassv2 create-component-version` from a stamped `recipe.json`, then `create-deployment` targeting that version.
+Edge-only secrets (`PI_HOST`, etc.) are **not** used by this repo anymore.

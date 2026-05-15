@@ -448,7 +448,7 @@ def _create_github_pr(results: dict):
     map50 = results["challenger"]["map50"]
     regressions = results["critical_regressions"]
 
-    title = f"Deploy DETR {v} — mAP@50 {map50:.3f} (delta {delta:+.3f})"
+    title = f"Promote DETR {v} — mAP@50 {map50:.3f} (delta {delta:+.3f})"
 
     champ = results.get("champion")
     champ_line = (
@@ -487,7 +487,7 @@ def _create_github_pr(results: dict):
 
 ### Action Required
 1. Run `python pipeline/phase_d/fiftyone_audit.py --results pipeline/phase_d/eval_results.json` locally for visual inspection
-2. If satisfied, **merge this PR** → triggers Phase E deployment
+2. If satisfied, **merge this PR** → generates the model card on `main` (no edge deploy in this repo)
 3. If unsatisfied, **close this PR** → model stays in Staging
 """
 

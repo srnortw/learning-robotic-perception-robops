@@ -1,0 +1,57 @@
+---
+description: DETR MLOps pipeline project context. Read docs before building any phase.
+alwaysApply: true
+---
+
+# Project: DETR MLOps Pipeline (Round 1)
+
+## Read This Before Starting Any Task
+
+Always read `docs/README.md` first. It contains the pipeline overview, data flow, infrastructure stack, and links to phase plan files.
+
+For phase-specific work, read the relevant plan file in `docs/pipeline_plans/` before writing any code:
+
+| Task involves | Read first |
+|---|---|
+| DVC, FiftyOne, CVAT, MDS conversion, drift gate, params.yaml | `docs/pipeline_plans/02_PHASE_B_DATA_ENGINEERING.md` |
+| Colab training, StreamingDataset, ONNX export, MLflow, GitHub Actions | `docs/pipeline_plans/03_PHASE_C_TRAINING_DETR.md` |
+| Champion-challenger eval, model card, Discord webhook, FiftyOne audit | `docs/pipeline_plans/04_PHASE_D_HUMAN_AUDIT.md` |
+| Drift detection, retrain trigger, scheduled drift workflow | `docs/pipeline_plans/06_PHASE_F_MONITORING.md` |
+| (Archived) live ingest / edge deploy | `docs/pipeline_plans/01_PHASE_A_DATA_INGESTION.md`, `05_PHASE_E_DEPLOYMENT.md` |
+
+## Project Stack (Quick Reference)
+
+- **Training:** Google Colab Pro+ or `docker/training` (amd64) on a workstation
+- **Dataset format:** COCO JSON → MDS shards (Phase B `convert_to_mds.py`) → `s3://bucket/mds/detr/vN/`
+- **Model:** `microsoft/conditional-detr-resnet-50` (HuggingFace) for Round 1
+- **CI/CD:** GitHub Actions — `ci_deploy.yml` exports ONNX, pushes **training** image to ECR; optional self-hosted runner for `drift_check.yml`
+- **Registry:** AWS ECR — **`robops/training`** (amd64) only in this repo
+- **Storage:** AWS S3 (raw images + MDS shards + weights), MongoDB Atlas optional (drift / retrain)
+- **Experiment tracking:** DagsHub (MLflow + DVC remote)
+
+## Key Data Path Conventions
+
+- Raw images in S3: `s3://bucket/images/detr/YYYY-MM-DD/robot_id/` (legacy path; ingest may be batch-only now)
+- DVC cache: `s3://bucket/dvc-cache/`
+- MDS shards: `s3://bucket/mds/detr/vN/` — path in `pipeline/phase_c/detr/params.yaml`
+- Holdout: `s3://bucket/data/detr/holdout/`
+- Weights: `s3://bucket/weights/detr/vN/model.pt` and `model_int8.onnx`
+
+## Repo Structure (MLOps)
+
+```
+├── .cursor/rules/
+├── .github/workflows/       # ci_deploy.yml, drift_check.yml, phase_b.yml
+├── docker/training/       # amd64 training + export Dockerfile
+├── pipeline/
+│   ├── phase_a/             # README + optional mongo setup (no ROS nodes)
+│   ├── phase_b/
+│   ├── phase_c/detr/
+│   ├── phase_d/
+│   └── phase_f/
+└── data/detr/               # DVC pointers
+```
+
+## Architecture Rounds
+
+Current round: **Round 1 — DETR**. Future rounds reuse the same MLOps infra; **edge robotics** belongs in a separate repository if reintroduced.
