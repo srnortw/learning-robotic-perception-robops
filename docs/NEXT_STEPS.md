@@ -1,20 +1,22 @@
 # Next steps — resume when you are ready
 
-Use this checklist **tomorrow** or whenever you continue. No rush.
+---
+
+## Current status (2026-05-15)
+
+- **CI run succeeded:** [Actions run 25922972322](https://github.com/srnortw/learning-robotic-perception-robops/actions/runs/25922972322)
+  - Export ONNX + INT8 → S3 ✓
+  - Training image → ECR ✓
+  - Phase D eval ✓ (fix: `latest` run ID resolved in `eval_champion_challenger.py`)
+- **Open approval PR:** [#26 — Promote DETR v2](https://github.com/srnortw/learning-robotic-perception-robops/pull/26) (mAP@50 **0.472**, delta **+0.472**)
+
+**Your move:** merge PR #26 when satisfied → **Generate Model Card** job runs on `main`.
 
 ---
 
-## 1. Confirm the last GitHub Actions run
+## 1. Confirm the last GitHub Actions run (done)
 
-1. Open: `https://github.com/srnortw/learning-robotic-perception-robops/actions`
-2. Open the latest **“CI — DETR MLOps (export, train image, eval, model card)”** run (manual dispatch with `latest`).
-3. Check:
-   - **Export ONNX + INT8 Quantize** — success (S3 should have `weights/detr/v2/model_int8.onnx`).
-   - **Build Training Docker Image → ECR** — success (image pushed to `…/robops/training:v2` and `:latest`).
-
-If **export** failed: open the job log; common issues are MLflow `latest` resolution, DagsHub secrets, or torch/onnx version drift. Fix in repo or re-run with an explicit Colab **run ID**.
-
-If **Docker push** failed: confirm `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in GitHub secrets and that repo `robops/training` still exists in ECR.
+Latest MLOps workflow completed green. Re-run only if you change weights or want a new Colab run ID pinned in eval.
 
 ---
 
