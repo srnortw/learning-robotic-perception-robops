@@ -70,6 +70,28 @@ def setup_mlflow():
     return mlflow.tracking.MlflowClient(tracking_uri=MLFLOW_URI)
 
 
+def resolve_run_id(run_id: str, experiment_name: str) -> str:
+    """If run_id is 'latest', fetch the most recent finished run from MLflow."""
+    if run_id != "latest":
+        return run_id
+    exp = mlflow.get_experiment_by_name(experiment_name)
+    if exp is None:
+        raise ValueError(
+            f"MLflow experiment '{experiment_name}' not found. Run Colab training first."
+        )
+    runs = mlflow.search_runs(
+        experiment_ids=[exp.experiment_id],
+        filter_string="status = 'FINISHED'",
+        order_by=["start_time DESC"],
+        max_results=1,
+    )
+    if runs.empty:
+        raise ValueError("No finished MLflow runs found. Run Colab training first.")
+    resolved = runs.iloc[0]["run_id"]
+    print(f"Resolved --run-id latest → {resolved}")
+    return resolved
+
+
 def download_onnx(dataset_version: str, dest: str):
     s3 = boto3.client("s3", region_name=AWS_REGION)
     key = f"weights/detr/{dataset_version}/model_int8.onnx"
@@ -347,6 +369,7 @@ def main():
 
     params = load_params()
     client = setup_mlflow()
+    run_id = resolve_run_id(args.run_id, params["mlflow"]["experiment_name"])
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # ── 1. Download challenger ONNX
@@ -400,10 +423,10 @@ def main():
         print(f"\nAuto-approved: {approved}")
 
         # ── 7. Register in MLflow Registry
-        mv_version = register_challenger(client, args.run_id, args.dataset_version)
+        mv_version = register_challenger(client, run_id, args.dataset_version)
 
         # ── 8. Log eval metrics back to the MLflow run
-        with mlflow.start_run(run_id=args.run_id):
+        with mlflow.start_run(run_id=run_id):
             mlflow.log_metrics({
                 "eval_map50":       challenger_metrics["map50"],
                 "eval_map50_95":    challenger_metrics["map50_95"],
@@ -412,11 +435,11 @@ def main():
             })
             for cls, ap in challenger_metrics.get("per_class_ap50", {}).items():
                 mlflow.log_metric(f"eval_ap50_{cls}", ap)
-        print(f"Metrics logged to MLflow run {args.run_id}")
+        print(f"Metrics logged to MLflow run {run_id}")
 
         # ── 9. Write results JSON
         results = {
-            "run_id": args.run_id,
+            "run_id": run_id,
             "model_version": mv_version,
             "dataset_version": args.dataset_version,
             "challenger": challenger_metrics,
